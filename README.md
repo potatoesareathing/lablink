@@ -1,23 +1,23 @@
-# LabLink — GenAI-powered campus lab resource sharing
+﻿# LabLink â€” GenAI-powered campus lab resource sharing
 
-> **PromptWars x Cynergy Coding Club · PS1 — "LabLink: Making College Laboratories More Accessible"**
+> **PromptWars x Cynergy Coding Club Â· PS1 â€” "LabLink: Making College Laboratories More Accessible"**
 
 LabLink helps students **discover** specialised equipment, development kits and workstations across every
 department, **book** time without collisions, **request project-based access**, and get **fair allocations**
 when demand spikes before deadlines. Faculty approve with AI summaries and deterministic risk flags, and a
 utilisation dashboard steers demand toward idle equipment.
 
-**Live demo:** _Cloud Run URL added after deployment_ · Sign in with any demo persona (no password needed).
+**Live demo:** _Cloud Run URL added after deployment_ Â· Sign in with any demo persona (no password needed).
 
 ---
 
-## Problem → feature mapping
+## Problem â†’ feature mapping
 
 | Problem statement requirement                                                                              | How LabLink delivers it                                                                                                            |
 | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Discover specialised equipment, dev kits, workstations **across departments**                              | Campus-wide catalogue (30 units, 7 labs, 5 departments) with department/category/availability filters                              |
 | **GenAI-powered**                                                                                          | Gemini powers natural-language discovery, request drafting, faculty summaries and allocation explanations                          |
-| **Equipment discovery**                                                                                    | "I need to measure signal noise on my IoT sensor" → ranked matches with a one-line reason each                                     |
+| **Equipment discovery**                                                                                    | "I need to measure signal noise on my IoT sensor" â†’ ranked matches with a one-line reason each                                     |
 | **Intelligent slot booking**                                                                               | Conflict-free hourly booking; on conflict it suggests the next free windows **and** identical units in other labs at the same time |
 | **Project-based access requests**                                                                          | Students submit project, deadline, hours and equipment; AI drafts the request from a rough idea                                    |
 | **Faculty approvals**                                                                                      | Urgency-sorted queue, AI summary + deterministic risk flags, approve (auto-schedules) or reject with a reason                      |
@@ -49,11 +49,11 @@ Previews never commit. **Apply** recomputes against current bookings, so a stale
 ## Architecture
 
 ```
-React + Vite SPA  ──HTTPS/JSON──▶  Express API (TypeScript)  ──▶  Gemini API (server-side only)
-                                    ├─ routes/      zod validation, roles, rate limits
-                                    ├─ services/    allocation, availability, booking, requests, stats
-                                    ├─ ai/          Gemini client, prompts, TTL cache, fallbacks
-                                    └─ data/        seeded in-memory store (id-indexed maps)
+React + Vite SPA  â”€â”€HTTPS/JSONâ”€â”€â–¶  Express API (TypeScript)  â”€â”€â–¶  Gemini API (server-side only)
+                                    â”œâ”€ routes/      zod validation, roles, rate limits
+                                    â”œâ”€ services/    allocation, availability, booking, requests, stats
+                                    â”œâ”€ ai/          Gemini client, prompts, TTL cache, fallbacks
+                                    â””â”€ data/        seeded in-memory store (id-indexed maps)
              one container on Google Cloud Run (API + static client)
 ```
 
@@ -64,7 +64,7 @@ React + Vite SPA  ──HTTPS/JSON──▶  Express API (TypeScript)  ──▶
 | Styling    | Plain CSS with tokens                           | Zero dependencies; full control of contrast, focus and dark mode              |
 | Backend    | Express 5                                       | Minimal and readable; serves API and static client from one Cloud Run service |
 | Validation | zod                                             | One schema per input; rejects bad data at the edge with field-level errors    |
-| AI         | Gemini (`@google/genai`, `gemini-flash-latest`) | Fast, low cost, structured JSON output validated by zod                       |
+| AI         | Gemini (`@google/genai`, newest Flash model auto-selected) | Fast, low cost, structured JSON output validated by zod                       |
 | Data       | Seeded in-memory store                          | No database to provision; deterministic demo; swap-in point for Firestore     |
 | Hosting    | Google Cloud Run                                | HTTPS URL, scales to zero, secrets via env / Secret Manager                   |
 
@@ -104,7 +104,7 @@ Runtime dependencies are intentionally few: `express`, `helmet`, `express-rate-l
 ## Testing
 
 ```bash
-npm test            # 55 tests: allocation engine, availability, booking, API, AI fallbacks, UI + axe
+npm test            # 56 tests: allocation engine, availability, booking, API, AI fallbacks, UI + axe
 npm run test:coverage
 npm run lint && npm run typecheck
 ```
@@ -134,7 +134,7 @@ The app is a single Docker container listening on `$PORT`, so it runs on any con
 
 ### Render (free, used for the live demo)
 
-`render.yaml` is a Render Blueprint: **New → Blueprint → select this repo**, then paste `GEMINI_API_KEY`
+`render.yaml` is a Render Blueprint: **New â†’ Blueprint â†’ select this repo**, then paste `GEMINI_API_KEY`
 when prompted. `SESSION_SECRET` is generated automatically.
 
 ### Google Cloud Run
@@ -149,11 +149,11 @@ The multi-stage `Dockerfile` builds the client and server, then ships only produ
 
 ## Demo script (2 minutes)
 
-1. **Student (Aarav):** search "I need to measure signal noise on my IoT sensor" → AI-ranked equipment across departments.
-2. Open a unit, click a **Booked** slot → instant alternatives: next free windows and identical units in other labs.
-3. **Project requests:** describe an idea → "Draft request for me" → submit.
-4. **Faculty (Dr. Rao):** Approvals → AI summary + risk flags → approve and schedule.
-5. **Resolve conflicts:** 3D printers (30 h demanded, about 29 h free) → fair plan with explanations → apply.
+1. **Student (Aarav):** search "I need to measure signal noise on my IoT sensor" â†’ AI-ranked equipment across departments.
+2. Open a unit, click a **Booked** slot â†’ instant alternatives: next free windows and identical units in other labs.
+3. **Project requests:** describe an idea â†’ "Draft request for me" â†’ submit.
+4. **Faculty (Dr. Rao):** Approvals â†’ AI summary + risk flags â†’ approve and schedule.
+5. **Resolve conflicts:** 3D printers (30 h demanded, about 29 h free) â†’ fair plan with explanations â†’ apply.
 6. **Utilisation:** campus usage and rebalancing suggestions.
 
 ## Project structure

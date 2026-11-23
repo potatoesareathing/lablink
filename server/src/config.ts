@@ -1,11 +1,11 @@
-import { randomBytes } from 'node:crypto';
+﻿import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().min(1).default('gemini-flash-latest'),
+  GEMINI_MODEL: z.string().min(1).default('auto'),
   SESSION_SECRET: z.string().min(16).optional(),
   CAMPUS_UTC_OFFSET_MINUTES: z.coerce.number().int().min(-720).max(840).default(330),
   CLIENT_DIR: z.string().optional(),

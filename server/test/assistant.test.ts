@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Assistant, templateExplanation } from '../src/ai/assistant.js';
 import type { LlmClient } from '../src/ai/llm.js';
-import { TtlCache } from '../src/ai/llm.js';
+import { TtlCache, pickFlashModel } from '../src/ai/llm.js';
 import { createSeed } from '../src/data/seed.js';
 import { Store } from '../src/data/store.js';
 import { NOW } from './helpers.js';
@@ -89,6 +89,22 @@ describe('Assistant', () => {
     expect(out.source).toBe('template');
     expect(out.explanations.get('r1')).toBe(templateExplanation(result, 'Asha'));
     expect(out.explanations.get('r1')).toMatch(/3 of 6 h/);
+  });
+});
+
+describe('pickFlashModel', () => {
+  it('chooses the newest general Flash model and skips specialised variants', () => {
+    expect(
+      pickFlashModel([
+        'gemini-2.0-flash',
+        'gemini-3.8-flash-tts',
+        'gemini-3.8-flash-lite',
+        'gemini-3.8-flash',
+        'gemini-2.5-pro',
+        'text-embedding-004',
+      ]),
+    ).toBe('gemini-3.8-flash');
+    expect(pickFlashModel(['gemini-2.5-pro'])).toBeUndefined();
   });
 });
 
