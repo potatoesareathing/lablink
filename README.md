@@ -1,23 +1,23 @@
-﻿# LabLink â€” GenAI-powered campus lab resource sharing
+# LabLink — GenAI-powered campus lab resource sharing
 
-> **PromptWars x Cynergy Coding Club Â· PS1 â€” "LabLink: Making College Laboratories More Accessible"**
+> **PromptWars x Cynergy Coding Club · PS1 — "LabLink: Making College Laboratories More Accessible"**
 
 LabLink helps students **discover** specialised equipment, development kits and workstations across every
 department, **book** time without collisions, **request project-based access**, and get **fair allocations**
 when demand spikes before deadlines. Faculty approve with AI summaries and deterministic risk flags, and a
 utilisation dashboard steers demand toward idle equipment.
 
-**Live demo:** _Cloud Run URL added after deployment_ Â· Sign in with any demo persona (no password needed).
+**Live demo:** https://lablink-yl99.onrender.com · Sign in with any demo persona (no password needed).
 
 ---
 
-## Problem â†’ feature mapping
+## Problem → feature mapping
 
 | Problem statement requirement                                                                              | How LabLink delivers it                                                                                                            |
 | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Discover specialised equipment, dev kits, workstations **across departments**                              | Campus-wide catalogue (30 units, 7 labs, 5 departments) with department/category/availability filters                              |
 | **GenAI-powered**                                                                                          | Gemini powers natural-language discovery, request drafting, faculty summaries and allocation explanations                          |
-| **Equipment discovery**                                                                                    | "I need to measure signal noise on my IoT sensor" â†’ ranked matches with a one-line reason each                                   |
+| **Equipment discovery**                                                                                    | "I need to measure signal noise on my IoT sensor" → ranked matches with a one-line reason each                                     |
 | **Intelligent slot booking**                                                                               | Conflict-free hourly booking; on conflict it suggests the next free windows **and** identical units in other labs at the same time |
 | **Project-based access requests**                                                                          | Students submit project, deadline, hours and equipment; AI drafts the request from a rough idea                                    |
 | **Faculty approvals**                                                                                      | Urgency-sorted queue, AI summary + deterministic risk flags, approve (auto-schedules) or reject with a reason                      |
@@ -49,11 +49,11 @@ Previews never commit. **Apply** recomputes against current bookings, so a stale
 ## Architecture
 
 ```
-React + Vite SPA  â”€â”€HTTPS/JSONâ”€â”€â–¶  Express API (TypeScript)  â”€â”€â–¶  Gemini API (server-side only)
-                                    â”œâ”€ routes/      zod validation, roles, rate limits
-                                    â”œâ”€ services/    allocation, availability, booking, requests, stats
-                                    â”œâ”€ ai/          Gemini client, prompts, TTL cache, fallbacks
-                                    â””â”€ data/        seeded in-memory store (id-indexed maps)
+React + Vite SPA  ──HTTPS/JSON──▶  Express API (TypeScript)  ──▶  Gemini API (server-side only)
+                                    ├─ routes/      zod validation, roles, rate limits
+                                    ├─ services/    allocation, availability, booking, requests, stats
+                                    ├─ ai/          Gemini client, prompts, TTL cache, fallbacks
+                                    └─ data/        seeded in-memory store (id-indexed maps)
              one container on Google Cloud Run (API + static client)
 ```
 
@@ -136,7 +136,9 @@ The app is a single Docker container listening on `$PORT`, so it runs on any con
 
 ### Render (free, used for the live demo)
 
-`render.yaml` is a Render Blueprint: **New â†’ Blueprint â†’ select this repo**, then paste `GEMINI_API_KEY`
+A scheduled GitHub Actions job pings `/api/health` every 10 minutes so the free instance stays warm; the same workflow runs lint, typecheck, tests and build on every push.
+
+`render.yaml` is a Render Blueprint: **New → Blueprint → select this repo**, then paste `GEMINI_API_KEY`
 when prompted. `SESSION_SECRET` is generated automatically.
 
 ### Google Cloud Run
@@ -151,11 +153,11 @@ The multi-stage `Dockerfile` builds the client and server, then ships only produ
 
 ## Demo script (2 minutes)
 
-1. **Student (Aarav):** search "I need to measure signal noise on my IoT sensor" â†’ AI-ranked equipment across departments.
-2. Open a unit, click a **Booked** slot â†’ instant alternatives: next free windows and identical units in other labs.
-3. **Project requests:** describe an idea â†’ "Draft request for me" â†’ submit.
-4. **Faculty (Dr. Rao):** Approvals â†’ AI summary + risk flags â†’ approve and schedule.
-5. **Resolve conflicts:** 3D printers (30 h demanded, about 29 h free) â†’ fair plan with explanations â†’ apply.
+1. **Student (Aarav):** search "I need to measure signal noise on my IoT sensor" → AI-ranked equipment across departments.
+2. Open a unit, click a **Booked** slot → instant alternatives: next free windows and identical units in other labs.
+3. **Project requests:** describe an idea → "Draft request for me" → submit.
+4. **Faculty (Dr. Rao):** Approvals → AI summary + risk flags → approve and schedule.
+5. **Resolve conflicts:** 3D printers (30 h demanded, about 29 h free) → fair plan with explanations → apply.
 6. **Utilisation:** campus usage and rebalancing suggestions.
 
 ## Project structure
