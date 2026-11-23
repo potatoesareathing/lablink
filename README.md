@@ -13,19 +13,20 @@ utilisation dashboard steers demand toward idle equipment.
 
 ## Problem → feature mapping
 
-| Problem statement requirement                                                                              | How LabLink delivers it                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Discover specialised equipment, dev kits, workstations **across departments**                              | Campus-wide catalogue (30 units, 7 labs, 5 departments) with department/category/availability filters                              |
-| **GenAI-powered**                                                                                          | Gemini powers natural-language discovery, request drafting, faculty summaries and allocation explanations                          |
-| **Equipment discovery**                                                                                    | "I need to measure signal noise on my IoT sensor" → ranked matches with a one-line reason each                                     |
-| **Intelligent slot booking**                                                                               | Conflict-free hourly booking; on conflict it suggests the next free windows **and** identical units in other labs at the same time |
-| **Project-based access requests**                                                                          | Students submit project, deadline, hours and equipment; AI drafts the request from a rough idea                                    |
-| **Faculty approvals**                                                                                      | Urgency-sorted queue, AI summary + deterministic risk flags, approve (auto-schedules) or reject with a reason                      |
-| **Optimising resource utilisation**                                                                        | Utilisation dashboard (per unit and department) + rebalancing suggestions toward idle equivalents                                  |
-| **Equipment tracking**                                                                                     | Faculty equipment desk: hand-out and return each unit, live "who has what", overdue detection                                      |
-| **Overdue handling**                                                                                       | Late returns get a capped fine (₹50/h, max ₹500), are escalated to faculty, and lower the student's fairness priority              |
-| **Notifications**                                                                                          | In-app notifications for approvals, upcoming bookings, overdue items and fines (`GET /api/notifications`)                          |
-| **Resolve scheduling conflicts fairly and feasibly** based on **deadlines, availability and requirements** | Deterministic fair-allocation engine (below) + plain-language explanations                                                         |
+| Problem statement requirement                                                                              | How LabLink delivers it                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Discover specialised equipment, dev kits, workstations **across departments**                              | Campus-wide catalogue (30 units, 7 labs, 5 departments) with department/category/availability filters                                                                         |
+| **GenAI-powered**                                                                                          | Gemini powers natural-language discovery, request drafting, faculty summaries and allocation explanations                                                                     |
+| **Equipment discovery**                                                                                    | "I need to measure signal noise on my IoT sensor" → ranked matches with a one-line reason each                                                                                |
+| **Intelligent slot booking**                                                                               | Conflict-free hourly booking; on conflict it suggests the next free windows **and** identical units in other labs at the same time                                            |
+| **Project-based access requests**                                                                          | Students submit project, deadline, hours and equipment; AI drafts the request from a rough idea                                                                               |
+| **Faculty approvals**                                                                                      | Urgency-sorted queue, AI summary + deterministic risk flags, approve (auto-schedules) or reject with a reason                                                                 |
+| **Optimising resource utilisation**                                                                        | Utilisation dashboard (per unit and department) + rebalancing suggestions toward idle equivalents                                                                             |
+| **Interactive 3D campus map**                                                                              | Three.js campus model: rotate, zoom and click a building to see its labs and equipment, then book; a synced keyboard/screen-reader department list offers the same navigation |
+| **Equipment tracking**                                                                                     | Faculty equipment desk: hand-out and return each unit, live "who has what", overdue detection                                                                                 |
+| **Overdue handling**                                                                                       | Late returns get a capped fine (₹50/h, max ₹500), are escalated to faculty, and lower the student's fairness priority                                                         |
+| **Notifications**                                                                                          | In-app notifications for approvals, upcoming bookings, overdue items and fines (`GET /api/notifications`)                                                                     |
+| **Resolve scheduling conflicts fairly and feasibly** based on **deadlines, availability and requirements** | Deterministic fair-allocation engine (below) + plain-language explanations                                                                                                    |
 
 ## The fair allocation engine
 
@@ -107,7 +108,7 @@ Runtime dependencies are intentionally few: `express`, `helmet`, `express-rate-l
 ## Testing
 
 ```bash
-npm test            # 87 tests (~92% line coverage): allocation engine, booking, API security, AI fallbacks, every UI view + axe
+npm test            # 88 tests (~92% line coverage): allocation engine, booking, API security, AI fallbacks, every UI view + axe
 npm run test:coverage
 npm run lint && npm run typecheck
 ```

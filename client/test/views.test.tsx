@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import { Approvals } from '../src/components/Approvals';
 import { BookingPanel } from '../src/components/BookingPanel';
+import { CampusMap } from '../src/components/CampusMap';
 import { Dashboard } from '../src/components/Dashboard';
 import { MyBookings } from '../src/components/MyBookings';
 import { Resolver } from '../src/components/Resolver';
@@ -357,6 +358,46 @@ describe('Dashboard and bookings', () => {
     const { container } = render(<MyBookings />);
     expect(await screen.findByText('Project allocation')).toBeTruthy();
     await waitFor(() => expect(screen.getByRole('table')).toBeTruthy());
+    await expectAccessible(container);
+  });
+});
+
+describe('CampusMap', () => {
+  it('lists departments accessibly and shows labs and equipment for the chosen one', async () => {
+    const scope = {
+      ...equipment,
+      id: 'scope-1',
+      name: 'Oscilloscope',
+      category: 'Oscilloscope',
+      labId: 'ece-elec',
+      labName: 'Electronics Lab 2',
+      departmentName: 'Electronics',
+      location: 'Block B',
+    };
+    mockApi((url) =>
+      url.includes('/availability')
+        ? { body: { equipment: scope, now: { date: '2026-11-23', hour: 8 }, days: [] } }
+        : {
+            body: {
+              items: [equipment, scope],
+              categories: [],
+              departments: [
+                { id: 'mech', name: 'Mechanical Engineering' },
+                { id: 'ece', name: 'Electronics & Communication' },
+              ],
+            },
+          },
+    );
+    const user = userEvent.setup();
+    const { container } = render(<CampusMap />);
+    const ece = await screen.findByRole('button', { name: /Electronics & Communication/ });
+    expect(ece.getAttribute('aria-pressed')).toBe('false');
+    await user.click(ece);
+    expect(ece.getAttribute('aria-pressed')).toBe('true');
+    expect(await screen.findByRole('heading', { name: 'Electronics Lab 2' })).toBeTruthy();
+    expect(screen.queryByText('3D Printer #1')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'View slots for Oscilloscope' }));
+    expect(await screen.findByRole('heading', { name: 'Oscilloscope' })).toBeTruthy();
     await expectAccessible(container);
   });
 });

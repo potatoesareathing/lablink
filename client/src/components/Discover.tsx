@@ -228,7 +228,7 @@ function EquipmentCard({
         disabled={item.status !== 'available'}
         onClick={() => onSelect(item.id)}
       >
-        View slots<span className="sr-only"> for {item.name}</span>
+        View slots <span className="sr-only">for {item.name}</span>
       </button>
     </li>
   );

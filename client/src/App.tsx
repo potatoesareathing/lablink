@@ -16,15 +16,19 @@ const Approvals = lazy(() =>
   import('./components/Approvals').then((m) => ({ default: m.Approvals })),
 );
 const Resolver = lazy(() => import('./components/Resolver').then((m) => ({ default: m.Resolver })));
+const CampusMap = lazy(() =>
+  import('./components/CampusMap').then((m) => ({ default: m.CampusMap })),
+);
 const Dashboard = lazy(() =>
   import('./components/Dashboard').then((m) => ({ default: m.Dashboard })),
 );
 
-type View = 'discover' | 'requests' | 'bookings' | 'approvals' | 'resolve' | 'utilisation';
+type View = 'discover' | 'map' | 'requests' | 'bookings' | 'approvals' | 'resolve' | 'utilisation';
 
 const NAV: Record<User['role'], { id: View; label: string }[]> = {
   student: [
     { id: 'discover', label: 'Discover' },
+    { id: 'map', label: 'Campus map' },
     { id: 'requests', label: 'Project requests' },
     { id: 'bookings', label: 'My bookings' },
   ],
@@ -33,6 +37,7 @@ const NAV: Record<User['role'], { id: View; label: string }[]> = {
     { id: 'resolve', label: 'Resolve conflicts' },
     { id: 'utilisation', label: 'Utilisation' },
     { id: 'discover', label: 'Discover' },
+    { id: 'map', label: 'Campus map' },
   ],
 };
 
@@ -79,7 +84,7 @@ export function App() {
           <span className="logo" aria-hidden="true">
             ⚗
           </span>
-          <span>LabLink</span>
+          <span className="brand-name">LabLink</span>
         </div>
         {user && (
           <nav aria-label="Primary">
@@ -101,7 +106,7 @@ export function App() {
         )}
         {user && (
           <div className="who">
-            <span className="small">
+            <span className="small who-name">
               {user.name} <span className="muted">({user.role})</span>
             </span>
             <button type="button" className="btn btn-ghost" onClick={() => void signOut()}>
@@ -124,6 +129,7 @@ export function App() {
         <main id="main" className="container" tabIndex={-1}>
           <Suspense fallback={<Loading />}>
             {view === 'discover' && <Discover aiEnabled={aiEnabled} />}
+            {view === 'map' && <CampusMap />}
             {view === 'requests' && <StudentRequests today={todayLocal()} />}
             {view === 'bookings' && <MyBookings />}
             {view === 'approvals' && <Approvals />}
