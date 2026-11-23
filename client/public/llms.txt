@@ -1,0 +1,13 @@
+# LabLink
+
+> GenAI-powered campus laboratory resource-sharing platform: equipment discovery across departments, conflict-free slot booking, project-based access requests, faculty approvals and fair allocation of scarce equipment.
+
+## Using the demo
+
+- Open the site and choose a demo persona (student or faculty); no password is needed.
+- Students: Discover equipment in plain language, book hourly slots, submit project requests.
+- Faculty: review the approval queue, resolve scheduling conflicts, view utilisation.
+
+## Source
+
+- [README](https://github.com/potatoesareathing/lablink#readme): architecture, allocation algorithm, security, accessibility and tests.
