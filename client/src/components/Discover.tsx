@@ -111,28 +111,7 @@ export function Discover({ aiEnabled }: { aiEnabled: boolean }) {
 
         <div aria-live="polite">
           {searching && <Loading label="Finding the best matches" />}
-          {results && !searching && (
-            <div className="results">
-              <p className="muted small">
-                {results.matches.length} match{results.matches.length === 1 ? '' : 'es'} ·{' '}
-                <AiBadge source={results.source} />
-              </p>
-              {results.matches.length === 0 ? (
-                <p>No matching equipment. Try different words or browse below.</p>
-              ) : (
-                <ul className="grid" role="list">
-                  {results.matches.map((m) => (
-                    <EquipmentCard
-                      key={m.equipment.id}
-                      item={m.equipment}
-                      reason={m.reason}
-                      onSelect={setSelected}
-                    />
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+          {results && !searching && <SearchResults results={results} onSelect={setSelected} />}
         </div>
       </section>
 
@@ -231,5 +210,37 @@ function EquipmentCard({
         View slots <span className="sr-only">for {item.name}</span>
       </button>
     </li>
+  );
+}
+
+/** AI or keyword matches for a natural-language query. */
+function SearchResults({
+  results,
+  onSelect,
+}: {
+  results: { source: string; matches: SearchMatch[] };
+  onSelect: (id: string) => void;
+}) {
+  const count = results.matches.length;
+  return (
+    <div className="results">
+      <p className="muted small">
+        {count} match{count === 1 ? '' : 'es'} · <AiBadge source={results.source} />
+      </p>
+      {count === 0 ? (
+        <p>No matching equipment. Try different words or browse below.</p>
+      ) : (
+        <ul className="grid" role="list">
+          {results.matches.map((m) => (
+            <EquipmentCard
+              key={m.equipment.id}
+              item={m.equipment}
+              reason={m.reason}
+              onSelect={onSelect}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

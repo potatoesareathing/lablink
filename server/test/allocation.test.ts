@@ -17,17 +17,29 @@ function assertNoOverlaps(results: ReturnType<typeof allocate>, existing: string
 
 describe('scoreRequest', () => {
   it('gives a closer deadline a higher urgency', () => {
-    const soon = scoreRequest(req('a', 's', 'p1', 2, '2026-11-24'), student('s'), 0, 10, NOW);
-    const later = scoreRequest(req('b', 's', 'p1', 2, '2026-12-05'), student('s'), 0, 10, NOW);
+    const soon = scoreRequest(
+      req('a', 's', 'p1', 2, '2026-11-24'),
+      { user: student('s'), hoursThisWeek: 0, freeHours: 10 },
+      NOW,
+    );
+    const later = scoreRequest(
+      req('b', 's', 'p1', 2, '2026-12-05'),
+      { user: student('s'), hoursThisWeek: 0, freeHours: 10 },
+      NOW,
+    );
     expect(soon.urgency).toBeGreaterThan(later.urgency);
     expect(soon.priority).toBeGreaterThan(later.priority);
   });
 
   it('lowers fairness for heavy weekly usage and raises it after denials', () => {
     const r = req('a', 's', 'p1', 2, '2026-11-30');
-    const heavy = scoreRequest(r, student('s'), 10, 10, NOW);
-    const light = scoreRequest(r, student('s'), 0, 10, NOW);
-    const denied = scoreRequest(r, student('s', 3), 10, 10, NOW);
+    const heavy = scoreRequest(r, { user: student('s'), hoursThisWeek: 10, freeHours: 10 }, NOW);
+    const light = scoreRequest(r, { user: student('s'), hoursThisWeek: 0, freeHours: 10 }, NOW);
+    const denied = scoreRequest(
+      r,
+      { user: student('s', 3), hoursThisWeek: 10, freeHours: 10 },
+      NOW,
+    );
     expect(heavy.fairness).toBe(0);
     expect(light.fairness).toBe(1);
     expect(denied.fairness).toBeGreaterThan(heavy.fairness);
@@ -35,8 +47,12 @@ describe('scoreRequest', () => {
 
   it('caps feasibility at 1 and reduces it when capacity is short', () => {
     const r = req('a', 's', 'p1', 10, '2026-11-30');
-    expect(scoreRequest(r, student('s'), 0, 50, NOW).feasibility).toBe(1);
-    expect(scoreRequest(r, student('s'), 0, 5, NOW).feasibility).toBe(0.5);
+    expect(
+      scoreRequest(r, { user: student('s'), hoursThisWeek: 0, freeHours: 50 }, NOW).feasibility,
+    ).toBe(1);
+    expect(
+      scoreRequest(r, { user: student('s'), hoursThisWeek: 0, freeHours: 5 }, NOW).feasibility,
+    ).toBe(0.5);
   });
 });
 

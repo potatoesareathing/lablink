@@ -33,8 +33,12 @@ describe('time helpers', () => {
 describe('availability', () => {
   it('detects overlaps and lists only future free hours', () => {
     const taken = occupiedSlots([booking('p1', 'a', NOW.date, 9, 11)]);
-    expect(hasOverlap(taken, 'p1', NOW.date, 10, 12)).toBe(true);
-    expect(hasOverlap(taken, 'p1', NOW.date, 11, 13)).toBe(false);
+    expect(
+      hasOverlap(taken, { equipmentId: 'p1', date: NOW.date, startHour: 10, endHour: 12 }),
+    ).toBe(true);
+    expect(
+      hasOverlap(taken, { equipmentId: 'p1', date: NOW.date, startHour: 11, endHour: 13 }),
+    ).toBe(false);
     const free = freeSlots('p1', taken, { date: NOW.date, hour: 13 }, NOW.date);
     expect(free.map((s) => s.hour)).toEqual([14, 15, 16]);
   });
@@ -53,9 +57,15 @@ describe('availability', () => {
 
   it('finds non-overlapping contiguous windows', () => {
     const taken = occupiedSlots([booking('p1', 'a', NOW.date, 9, 15)]);
-    expect(findWindows('p1', taken, NOW, NOW.date, NOW.date, 2, 3)).toEqual([
-      { date: NOW.date, startHour: 15, endHour: 17 },
-    ]);
+    expect(
+      findWindows(taken, NOW, {
+        equipmentId: 'p1',
+        fromDate: NOW.date,
+        lastDate: NOW.date,
+        hours: 2,
+        limit: 3,
+      }),
+    ).toEqual([{ date: NOW.date, startHour: 15, endHour: 17 }]);
   });
 });
 
@@ -68,8 +78,7 @@ describe('createBooking', () => {
       store,
       'stu-aarav',
       { equipmentId: 'laser-1', date: NOW.date, startHour: 10, hours: 2 },
-      NOW,
-      HORIZON,
+      { now: NOW, horizonEnd: HORIZON },
     );
     expect(out.ok).toBe(true);
     expect(store.bookingsFor('laser-1')).toHaveLength(1);
@@ -82,8 +91,7 @@ describe('createBooking', () => {
       store,
       'stu-aarav',
       { equipmentId: 'printer-mech-1', date: NOW.date, startHour: 10, hours: 2 },
-      NOW,
-      HORIZON,
+      { now: NOW, horizonEnd: HORIZON },
     );
     expect(out.ok).toBe(false);
     if (out.ok) return;
@@ -103,8 +111,7 @@ describe('createBooking', () => {
         store,
         'stu-aarav',
         { equipmentId: 'printer-mech-2', date: NOW.date, startHour: 10, hours: 1 },
-        NOW,
-        HORIZON,
+        { now: NOW, horizonEnd: HORIZON },
       ),
     ).toThrow(/maintenance/);
     expect(() =>
@@ -112,8 +119,7 @@ describe('createBooking', () => {
         store,
         'stu-aarav',
         { equipmentId: 'laser-1', date: '2026-11-22', startHour: 10, hours: 1 },
-        NOW,
-        HORIZON,
+        { now: NOW, horizonEnd: HORIZON },
       ),
     ).toThrow(/started/);
     // stu-aarav already has scope-1 tomorrow 14-16
@@ -122,8 +128,7 @@ describe('createBooking', () => {
         store,
         'stu-aarav',
         { equipmentId: 'laser-1', date: addDays(NOW.date, 1), startHour: 15, hours: 1 },
-        NOW,
-        HORIZON,
+        { now: NOW, horizonEnd: HORIZON },
       ),
     ).toThrow(/already have a booking/);
   });

@@ -61,3 +61,18 @@ export function PageHeader({ title, intro }: { title: string; intro?: string }) 
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong';
 }
+
+/** Loading -> empty -> content, the standard states of an async list. */
+export function DataState<T>({
+  items,
+  empty,
+  children,
+}: {
+  items: T[] | null;
+  empty: ReactNode;
+  children: (items: T[]) => ReactNode;
+}) {
+  if (!items) return <Loading />;
+  if (items.length === 0) return <>{empty}</>;
+  return <>{children(items)}</>;
+}

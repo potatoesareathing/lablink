@@ -31,13 +31,10 @@ export function bookingRoutes(deps: AppDeps): Router {
     const user = requireUser(req);
     const body = parse(BookingBody, req.body);
     const now = deps.clock();
-    const outcome = createBooking(
-      deps.store,
-      user.id,
-      body,
+    const outcome = createBooking(deps.store, user.id, body, {
       now,
-      addDays(now.date, BOOKING_HORIZON_DAYS),
-    );
+      horizonEnd: addDays(now.date, BOOKING_HORIZON_DAYS),
+    });
     if (outcome.ok) {
       res.status(201).json({ booking: outcome.booking });
     } else {

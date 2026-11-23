@@ -19,14 +19,15 @@ const REASON_TEXT: Record<ReasonCode, string> = {
   OVERDUE_HISTORY: 'a previous late return slightly lowered priority',
 };
 
+const OUTCOME_TEXT: Record<AllocationResult['outcome'], (r: AllocationResult) => string> = {
+  allocated: (r) => `receives all ${r.hoursNeeded} h`,
+  partial: (r) => `receives ${r.hoursGranted} of ${r.hoursNeeded} h`,
+  waitlisted: () => 'is waitlisted',
+};
+
 export function templateExplanation(r: AllocationResult, studentName: string): string {
-  const head =
-    r.outcome === 'allocated'
-      ? `${studentName} receives all ${r.hoursNeeded} h`
-      : r.outcome === 'partial'
-        ? `${studentName} receives ${r.hoursGranted} of ${r.hoursNeeded} h`
-        : `${studentName} is waitlisted`;
-  return `${head} because ${r.reasons.map((c) => REASON_TEXT[c]).join('; ')}.`;
+  const because = r.reasons.map((c) => REASON_TEXT[c]).join('; ');
+  return `${studentName} ${OUTCOME_TEXT[r.outcome](r)} because ${because}.`;
 }
 
 export function templatePlan(items: PlanContext[]): PlanExplanation {

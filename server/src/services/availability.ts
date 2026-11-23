@@ -16,16 +16,18 @@ export function occupiedSlots(bookings: Iterable<Booking>): Set<string> {
   return taken;
 }
 
-/** True if the proposed [startHour, endHour) range overlaps any existing booking. */
-export function hasOverlap(
-  taken: Set<string>,
-  equipmentId: string,
-  date: string,
-  startHour: number,
-  endHour: number,
-): boolean {
-  for (let h = startHour; h < endHour; h++) {
-    if (taken.has(slotKey(equipmentId, date, h))) return true;
+/** A [startHour, endHour) range on one unit and date. */
+export interface UnitRange {
+  equipmentId: string;
+  date: string;
+  startHour: number;
+  endHour: number;
+}
+
+/** True if the range overlaps any occupied hour. */
+export function hasOverlap(taken: Set<string>, range: UnitRange): boolean {
+  for (let h = range.startHour; h < range.endHour; h++) {
+    if (taken.has(slotKey(range.equipmentId, range.date, h))) return true;
   }
   return false;
 }
@@ -52,14 +54,12 @@ export function freeSlots(
 }
 
 /** Collapses consecutive hours on the same unit and date into booking-shaped ranges. */
-export function mergeSlots(
-  slots: Slot[],
-): { equipmentId: string; date: string; startHour: number; endHour: number }[] {
+export function mergeSlots(slots: Slot[]): UnitRange[] {
   const sorted = [...slots].sort(
     (a, b) =>
       a.equipmentId.localeCompare(b.equipmentId) || a.date.localeCompare(b.date) || a.hour - b.hour,
   );
-  const ranges: { equipmentId: string; date: string; startHour: number; endHour: number }[] = [];
+  const ranges: UnitRange[] = [];
   for (const s of sorted) {
     const last = ranges[ranges.length - 1];
     if (

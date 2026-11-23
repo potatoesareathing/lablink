@@ -69,10 +69,18 @@ export function assessRisks(request: AccessRequest, freeHours: number, now: Camp
   return risks;
 }
 
-export function toView(store: Store, request: AccessRequest, now: CampusClock): RequestView {
+/**
+ * Enriches a request for display. Pass `taken` when building many views at once so the
+ * occupied-slot set is computed once instead of per request.
+ */
+export function toView(
+  store: Store,
+  request: AccessRequest,
+  now: CampusClock,
+  taken: Set<string> = occupiedSlots(store.allBookings()),
+): RequestView {
   const equipment = store.equipment.get(request.equipmentId);
   const lab = equipment ? store.labs.get(equipment.labId) : undefined;
-  const taken = occupiedSlots(store.allBookings());
   const freeHours = candidateUnits(request, [...store.equipment.values()]).reduce(
     (sum, u) => sum + freeSlots(u.id, taken, now, request.deadline).length,
     0,
@@ -91,11 +99,12 @@ export function toView(store: Store, request: AccessRequest, now: CampusClock): 
 export function listRequests(store: Store, user: User, now: CampusClock): RequestView[] {
   const all = [...store.requests.values()];
   const visible = user.role === 'faculty' ? all : all.filter((r) => r.studentId === user.id);
+  const taken = occupiedSlots(store.allBookings());
   return visible
     .sort(
       (a, b) => a.deadline.localeCompare(b.deadline) || a.submittedAt.localeCompare(b.submittedAt),
     )
-    .map((r) => toView(store, r, now));
+    .map((r) => toView(store, r, now, taken));
 }
 
 /** Runs the allocator for the given pending requests without committing anything. */

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import type { JSX } from 'react';
 import type { User } from '../../shared/types';
 import { api } from './api';
 import { Discover } from './components/Discover';
@@ -43,6 +44,68 @@ const NAV: Record<User['role'], { id: View; label: string }[]> = {
 
 const todayLocal = () => new Date().toLocaleDateString('en-CA');
 
+/** The page for each view; only the active one is mounted. */
+function renderView(view: View, aiEnabled: boolean) {
+  const views: Record<View, () => JSX.Element> = {
+    discover: () => <Discover aiEnabled={aiEnabled} />,
+    map: () => <CampusMap />,
+    requests: () => <StudentRequests today={todayLocal()} />,
+    bookings: () => <MyBookings />,
+    approvals: () => <Approvals />,
+    resolve: () => <Resolver />,
+    utilisation: () => <Dashboard />,
+  };
+  return views[view]();
+}
+
+interface TopBarProps {
+  user: User | null;
+  view: View;
+  onNavigate: (view: View) => void;
+  onSignOut: () => void;
+}
+
+function TopBar({ user, view, onNavigate, onSignOut }: TopBarProps) {
+  return (
+    <header className="topbar">
+      <div className="brand">
+        <span className="logo" aria-hidden="true">
+          ⚗
+        </span>
+        <span className="brand-name">LabLink</span>
+      </div>
+      {user && (
+        <>
+          <nav aria-label="Primary">
+            <ul className="nav" role="list">
+              {NAV[user.role].map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className="nav-link"
+                    aria-current={view === item.id ? 'page' : undefined}
+                    onClick={() => onNavigate(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <div className="who">
+            <span className="small who-name">
+              {user.name} <span className="muted">({user.role})</span>
+            </span>
+            <button type="button" className="btn btn-ghost" onClick={onSignOut}>
+              Switch user
+            </button>
+          </div>
+        </>
+      )}
+    </header>
+  );
+}
+
 export function App() {
   const [user, setUser] = useState<User | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -69,73 +132,31 @@ export function App() {
     document.getElementById('page-title')?.focus();
   }, [view]);
 
-  async function signOut() {
-    await api.signOut().catch(() => undefined);
-    setUser(null);
-  }
+  const signOut = () => {
+    void api
+      .signOut()
+      .catch(() => undefined)
+      .then(() => setUser(null));
+  };
 
+  const signedOut = ready && !user;
   return (
     <>
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
-      <header className="topbar">
-        <div className="brand">
-          <span className="logo" aria-hidden="true">
-            ⚗
-          </span>
-          <span className="brand-name">LabLink</span>
-        </div>
-        {user && (
-          <nav aria-label="Primary">
-            <ul className="nav" role="list">
-              {NAV[user.role].map((item) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    className="nav-link"
-                    aria-current={view === item.id ? 'page' : undefined}
-                    onClick={() => setView(item.id)}
-                  >
-                    {item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        )}
-        {user && (
-          <div className="who">
-            <span className="small who-name">
-              {user.name} <span className="muted">({user.role})</span>
-            </span>
-            <button type="button" className="btn btn-ghost" onClick={() => void signOut()}>
-              Switch user
-            </button>
-          </div>
-        )}
-      </header>
-
+      <TopBar user={user} view={view} onNavigate={setView} onSignOut={signOut} />
       {error && <Notice tone="bad">{error}</Notice>}
-
-      {!ready ? (
-        // Same frame as the loaded app, so nothing shifts when the session resolves.
-        <main id="main" className="container">
-          <Loading label="Starting LabLink" />
-        </main>
-      ) : !user ? (
+      {signedOut ? (
         <SignIn onSignedIn={loadSession} />
       ) : (
+        // Same frame while the session loads, so nothing shifts when it resolves.
         <main id="main" className="container" tabIndex={-1}>
-          <Suspense fallback={<Loading />}>
-            {view === 'discover' && <Discover aiEnabled={aiEnabled} />}
-            {view === 'map' && <CampusMap />}
-            {view === 'requests' && <StudentRequests today={todayLocal()} />}
-            {view === 'bookings' && <MyBookings />}
-            {view === 'approvals' && <Approvals />}
-            {view === 'resolve' && <Resolver />}
-            {view === 'utilisation' && <Dashboard />}
-          </Suspense>
+          {ready ? (
+            <Suspense fallback={<Loading />}>{renderView(view, aiEnabled)}</Suspense>
+          ) : (
+            <Loading label="Starting LabLink" />
+          )}
         </main>
       )}
       <footer className="footer small muted">

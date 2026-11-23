@@ -1,10 +1,13 @@
 import { CLOSE_HOUR, OPEN_HOUR } from '../../../shared/constants.js';
-import type { Booking, EquipmentView } from '../../../shared/types.js';
+import type { Booking, Equipment, EquipmentView } from '../../../shared/types.js';
 import { Store } from '../data/store.js';
 import { HttpError, notFound } from '../lib/errors.js';
 import type { CampusClock } from '../lib/time.js';
 import { dateRange } from '../lib/time.js';
 import { hasOverlap, occupiedSlots, slotKey } from './availability.js';
+
+/** How many alternative windows on the same unit to suggest after a clash. */
+const ALTERNATIVE_WINDOWS = 3;
 
 export interface BookingInput {
   equipmentId: string;
@@ -27,35 +30,101 @@ export interface Alternatives {
 export type BookingOutcome =
   { ok: true; booking: Booking } | { ok: false; reason: 'conflict'; alternatives: Alternatives };
 
-/** Contiguous free windows of `hours` length on one unit, earliest first. */
-export function findWindows(
-  equipmentId: string,
-  taken: Set<string>,
-  now: CampusClock,
-  fromDate: string,
-  lastDate: string,
-  hours: number,
-  limit: number,
-): TimeWindow[] {
+/** Booking window: the current campus time and the last bookable date. */
+export interface BookingClock {
+  now: CampusClock;
+  horizonEnd: string;
+}
+
+export interface WindowQuery {
+  equipmentId: string;
+  fromDate: string;
+  lastDate: string;
+  hours: number;
+  limit: number;
+}
+
+/** Contiguous, non-overlapping free windows of `hours` length on one unit, earliest first. */
+export function findWindows(taken: Set<string>, now: CampusClock, q: WindowQuery): TimeWindow[] {
   const out: TimeWindow[] = [];
-  const start = fromDate < now.date ? now.date : fromDate;
-  for (const date of dateRange(start, lastDate)) {
+  const start = q.fromDate < now.date ? now.date : q.fromDate;
+  for (const date of dateRange(start, q.lastDate)) {
     const first = date === now.date ? Math.max(OPEN_HOUR, now.hour + 1) : OPEN_HOUR;
-    for (let h = first; h + hours <= CLOSE_HOUR; h++) {
-      if (!hasOverlap(taken, equipmentId, date, h, h + hours)) {
-        out.push({ date, startHour: h, endHour: h + hours });
-        if (out.length >= limit) return out;
-        h += hours - 1; // skip overlapping suggestions
-      }
+    let h = first;
+    while (h + q.hours <= CLOSE_HOUR && out.length < q.limit) {
+      const window = { date, startHour: h, endHour: h + q.hours };
+      const free = !hasOverlap(taken, { equipmentId: q.equipmentId, ...window });
+      if (free) out.push(window);
+      h += free ? q.hours : 1;
     }
   }
   return out;
 }
 
-function userBusy(store: Store, userId: string, date: string, start: number, end: number): boolean {
+function userBusy(store: Store, userId: string, w: TimeWindow): boolean {
   return store
     .allBookings()
-    .some((b) => b.userId === userId && b.date === date && b.startHour < end && start < b.endHour);
+    .some(
+      (b) =>
+        b.userId === userId &&
+        b.date === w.date &&
+        b.startHour < w.endHour &&
+        w.startHour < b.endHour,
+    );
+}
+
+/** Rejects maintenance units, past or out-of-horizon times and student double-booking. */
+interface BookingAttempt {
+  userId: string;
+  equipment: Equipment;
+  window: TimeWindow;
+}
+
+function assertBookable(
+  store: Store,
+  { userId, equipment, window }: BookingAttempt,
+  { now, horizonEnd }: BookingClock,
+): void {
+  if (equipment.status !== 'available') {
+    throw new HttpError(409, 'maintenance', `${equipment.name} is under maintenance`);
+  }
+  const started = window.date === now.date && window.startHour <= now.hour;
+  if (window.date < now.date || started) {
+    throw new HttpError(400, 'past_slot', 'That time has already started');
+  }
+  if (window.date > horizonEnd) {
+    throw new HttpError(400, 'beyond_horizon', 'Bookings can only be made up to 3 weeks ahead');
+  }
+  if (userBusy(store, userId, window)) {
+    throw new HttpError(409, 'user_busy', 'You already have a booking at that time');
+  }
+}
+
+/** Nearest free windows on the same unit, plus equivalent units free at the same time. */
+function alternativesFor(
+  store: Store,
+  equipment: Equipment,
+  window: TimeWindow,
+  { now, horizonEnd }: BookingClock,
+): Alternatives {
+  const taken = occupiedSlots(store.allBookings());
+  const sameEquipment = findWindows(taken, now, {
+    equipmentId: equipment.id,
+    fromDate: window.date,
+    lastDate: horizonEnd,
+    hours: window.endHour - window.startHour,
+    limit: ALTERNATIVE_WINDOWS,
+  });
+  const equivalents = [...store.equipment.values()]
+    .filter(
+      (e) =>
+        e.id !== equipment.id &&
+        e.equivalentGroup === equipment.equivalentGroup &&
+        e.status === 'available' &&
+        !hasOverlap(taken, { equipmentId: e.id, ...window }),
+    )
+    .map((e) => ({ equipment: store.equipmentView(e), ...window }));
+  return { sameEquipment, equivalents };
 }
 
 /**
@@ -66,62 +135,32 @@ export function createBooking(
   store: Store,
   userId: string,
   input: BookingInput,
-  now: CampusClock,
-  horizonEnd: string,
+  clock: BookingClock,
 ): BookingOutcome {
   const equipment = store.equipment.get(input.equipmentId);
   if (!equipment) throw notFound('Equipment');
-  if (equipment.status !== 'available') {
-    throw new HttpError(409, 'maintenance', `${equipment.name} is under maintenance`);
-  }
-  const endHour = input.startHour + input.hours;
-  if (input.date < now.date || (input.date === now.date && input.startHour <= now.hour)) {
-    throw new HttpError(400, 'past_slot', 'That time has already started');
-  }
-  if (input.date > horizonEnd) {
-    throw new HttpError(400, 'beyond_horizon', 'Bookings can only be made up to 3 weeks ahead');
-  }
-  if (userBusy(store, userId, input.date, input.startHour, endHour)) {
-    throw new HttpError(409, 'user_busy', 'You already have a booking at that time');
-  }
+  const window = {
+    date: input.date,
+    startHour: input.startHour,
+    endHour: input.startHour + input.hours,
+  };
+  assertBookable(store, { userId, equipment, window }, clock);
 
-  const taken = occupiedSlots(store.allBookings());
-  if (!hasOverlap(taken, equipment.id, input.date, input.startHour, endHour)) {
-    const booking = store.addBooking({
-      id: Store.newId('bk'),
-      equipmentId: equipment.id,
-      userId,
-      date: input.date,
-      startHour: input.startHour,
-      endHour,
-    });
-    return { ok: true, booking };
+  const taken = occupiedSlots(store.bookingsFor(equipment.id));
+  if (hasOverlap(taken, { equipmentId: equipment.id, ...window })) {
+    return {
+      ok: false,
+      reason: 'conflict',
+      alternatives: alternativesFor(store, equipment, window, clock),
+    };
   }
-
-  const sameEquipment = findWindows(
-    equipment.id,
-    taken,
-    now,
-    input.date,
-    horizonEnd,
-    input.hours,
-    3,
-  );
-  const equivalents = [...store.equipment.values()]
-    .filter(
-      (e) =>
-        e.id !== equipment.id &&
-        e.equivalentGroup === equipment.equivalentGroup &&
-        e.status === 'available' &&
-        !hasOverlap(taken, e.id, input.date, input.startHour, endHour),
-    )
-    .map((e) => ({
-      equipment: store.equipmentView(e),
-      date: input.date,
-      startHour: input.startHour,
-      endHour,
-    }));
-  return { ok: false, reason: 'conflict', alternatives: { sameEquipment, equivalents } };
+  const booking = store.addBooking({
+    id: Store.newId('bk'),
+    equipmentId: equipment.id,
+    userId,
+    ...window,
+  });
+  return { ok: true, booking };
 }
 
 /** Booked and free hours for one unit over a date range, for calendar rendering. */

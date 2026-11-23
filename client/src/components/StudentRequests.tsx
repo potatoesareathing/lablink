@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { EquipmentView } from '../../../shared/types';
 import { api } from '../api';
-import type { RequestView } from '../api';
+import type { Draft, RequestView } from '../api';
 import { formatDate } from '../format';
-import { AiBadge, Loading, Notice, PageHeader, StatusBadge, errorMessage } from './ui';
+import { AiBadge, Notice, PageHeader, StatusBadge, errorMessage, DataState } from './ui';
 
 const emptyForm = {
   projectTitle: '',
@@ -17,11 +17,10 @@ const emptyForm = {
 export function StudentRequests({ today }: { today: string }) {
   const [catalog, setCatalog] = useState<EquipmentView[]>([]);
   const [requests, setRequests] = useState<RequestView[] | null>(null);
-  const [idea, setIdea] = useState('');
   const [form, setForm] = useState(emptyForm);
-  const [draftNote, setDraftNote] = useState<{ source: string; text: string } | null>(null);
-  const [drafting, setDrafting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Bumped after a successful submit to reset the AI assistant.
+  const [assistKey, setAssistKey] = useState(0);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
 
   const refresh = () =>
@@ -38,26 +37,6 @@ export function StudentRequests({ today }: { today: string }) {
       .catch(() => setCatalog([]));
   }, []);
 
-  async function draft() {
-    setDrafting(true);
-    setMessage(null);
-    try {
-      const { draft } = await api.draft(idea);
-      setForm((f) => ({
-        ...f,
-        projectTitle: draft.projectTitle,
-        description: draft.description,
-        equipmentId: draft.equipmentId,
-        hoursNeeded: draft.hoursNeeded,
-      }));
-      setDraftNote({ source: draft.source, text: draft.rationale });
-    } catch (err) {
-      setMessage({ tone: 'bad', text: errorMessage(err) });
-    } finally {
-      setDrafting(false);
-    }
-  }
-
   async function submit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -66,8 +45,7 @@ export function StudentRequests({ today }: { today: string }) {
       await api.createRequest({ ...form, hoursNeeded: Number(form.hoursNeeded) });
       setMessage({ tone: 'ok', text: 'Request submitted. Faculty will review it shortly.' });
       setForm(emptyForm);
-      setIdea('');
-      setDraftNote(null);
+      setAssistKey((k) => k + 1);
       void refresh();
     } catch (err) {
       setMessage({ tone: 'bad', text: errorMessage(err) });
@@ -91,33 +69,19 @@ export function StudentRequests({ today }: { today: string }) {
           New request
         </h2>
 
-        <div className="assist">
-          <label htmlFor="idea">Describe your project idea (optional AI assist)</label>
-          <textarea
-            id="idea"
-            rows={2}
-            maxLength={800}
-            value={idea}
-            placeholder="e.g. We are building a soil-moisture monitor and need to 3D print 5 waterproof housings"
-            onChange={(e) => setIdea(e.target.value)}
-          />
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => void draft()}
-            disabled={drafting || idea.trim().length < 10}
-          >
-            {drafting ? 'Drafting…' : '✦ Draft request for me'}
-          </button>
-          <div aria-live="polite">
-            {draftNote && (
-              <p className="reason small">
-                <AiBadge source={draftNote.source} /> {draftNote.text} Review and edit before
-                submitting.
-              </p>
-            )}
-          </div>
-        </div>
+        <DraftAssistant
+          key={assistKey}
+          onDraft={(draft) =>
+            setForm((f) => ({
+              ...f,
+              projectTitle: draft.projectTitle,
+              description: draft.description,
+              equipmentId: draft.equipmentId,
+              hoursNeeded: draft.hoursNeeded,
+            }))
+          }
+          onError={(text) => setMessage({ tone: 'bad', text })}
+        />
 
         <form className="form-grid" onSubmit={(e) => void submit(e)}>
           <label>
@@ -184,13 +148,18 @@ export function StudentRequests({ today }: { today: string }) {
         </div>
       </section>
 
-      <section aria-labelledby="my-requests">
-        <h2 id="my-requests">My requests</h2>
-        {!requests ? (
-          <Loading />
-        ) : requests.length === 0 ? (
-          <p>No requests yet.</p>
-        ) : (
+      <MyRequests requests={requests} />
+    </>
+  );
+}
+
+/** The student's submitted requests with status and any faculty note. */
+function MyRequests({ requests }: { requests: RequestView[] | null }) {
+  return (
+    <section aria-labelledby="my-requests">
+      <h2 id="my-requests">My requests</h2>
+      <DataState items={requests} empty={<p>No requests yet.</p>}>
+        {(requests) => (
           <ul className="stack" role="list">
             {requests.map((r) => (
               <li key={r.id} className="card">
@@ -206,7 +175,61 @@ export function StudentRequests({ today }: { today: string }) {
             ))}
           </ul>
         )}
-      </section>
-    </>
+      </DataState>
+    </section>
+  );
+}
+
+interface DraftAssistantProps {
+  onDraft: (draft: Draft) => void;
+  onError: (message: string) => void;
+}
+
+/** Optional AI helper: turns a rough idea into a pre-filled request the student edits. */
+function DraftAssistant({ onDraft, onError }: DraftAssistantProps) {
+  const [idea, setIdea] = useState('');
+  const [drafting, setDrafting] = useState(false);
+  const [note, setNote] = useState<{ source: string; text: string } | null>(null);
+
+  async function draft() {
+    setDrafting(true);
+    try {
+      const { draft } = await api.draft(idea);
+      onDraft(draft);
+      setNote({ source: draft.source, text: draft.rationale });
+    } catch (err) {
+      onError(errorMessage(err));
+    } finally {
+      setDrafting(false);
+    }
+  }
+
+  return (
+    <div className="assist">
+      <label htmlFor="idea">Describe your project idea (optional AI assist)</label>
+      <textarea
+        id="idea"
+        rows={2}
+        maxLength={800}
+        value={idea}
+        placeholder="e.g. We are building a soil-moisture monitor and need to 3D print 5 waterproof housings"
+        onChange={(e) => setIdea(e.target.value)}
+      />
+      <button
+        type="button"
+        className="btn btn-secondary"
+        onClick={() => void draft()}
+        disabled={drafting || idea.trim().length < 10}
+      >
+        {drafting ? 'Drafting…' : '✦ Draft request for me'}
+      </button>
+      <div aria-live="polite">
+        {note && (
+          <p className="reason small">
+            <AiBadge source={note.source} /> {note.text} Review and edit before submitting.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

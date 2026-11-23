@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MAX_BOOKING_HOURS } from '../../../shared/constants';
 import { ApiError, api } from '../api';
-import type { Alternatives } from '../api';
+import type { Alternatives, TimeWindow } from '../api';
 import { formatDate, formatHour, formatRange } from '../format';
 import { Loading, Notice, errorMessage } from './ui';
 
@@ -94,64 +94,14 @@ export function BookingPanel({
         </button>
       </div>
 
-      <div className="table-scroll">
-        <table className="slots">
-          <caption className="sr-only">
-            Hourly availability for the next 7 days. Choose a free hour to start a booking, or a
-            booked hour to see alternatives.
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Day</th>
-              {data.days[0]?.hours.map((h) => (
-                <th scope="col" key={h.hour}>
-                  {formatHour(h.hour)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.days.map((day) => (
-              <tr key={day.date}>
-                <th scope="row">{formatDate(day.date)}</th>
-                {day.hours.map((h) => {
-                  const past = day.date === now.date && h.hour <= now.hour;
-                  const chosen = pick?.date === day.date && pick.hour === h.hour;
-                  return (
-                    <td key={h.hour}>
-                      {past ? (
-                        <span className="slot slot-past">
-                          —<span className="sr-only"> past</span>
-                        </span>
-                      ) : h.booked ? (
-                        <button
-                          type="button"
-                          className="slot slot-booked"
-                          disabled={busy}
-                          aria-label={`${formatDate(day.date)} ${formatHour(h.hour)} booked - show alternatives`}
-                          onClick={() => void book(equipment.id, day.date, h.hour, hours)}
-                        >
-                          Booked
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className={`slot slot-free${chosen ? ' slot-chosen' : ''}`}
-                          aria-pressed={chosen}
-                          aria-label={`${formatDate(day.date)} ${formatHour(h.hour)} free`}
-                          onClick={() => setPick({ date: day.date, hour: h.hour })}
-                        >
-                          Free
-                        </button>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SlotGrid
+        days={data.days}
+        now={now}
+        pick={pick}
+        busy={busy}
+        onPick={setPick}
+        onBooked={(date, hour) => void book(equipment.id, date, hour, hours)}
+      />
 
       <div className="booking-actions">
         <label>
@@ -179,58 +129,181 @@ export function BookingPanel({
       <div aria-live="polite">
         {message && <Notice tone={message.tone}>{message.text}</Notice>}
         {alternatives && (
-          <div className="alternatives">
-            {alternatives.sameEquipment.length > 0 && (
-              <>
-                <h3 className="h4">Next free times on this unit</h3>
-                <ul className="inline-list">
-                  {alternatives.sameEquipment.map((w) => (
-                    <li key={`${w.date}-${w.startHour}`}>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        disabled={busy}
-                        onClick={() =>
-                          void book(equipment.id, w.date, w.startHour, w.endHour - w.startHour)
-                        }
-                      >
-                        Book {formatRange(w.date, w.startHour, w.endHour)}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {alternatives.equivalents.length > 0 && (
-              <>
-                <h3 className="h4">Same time, equivalent unit in another lab</h3>
-                <ul className="inline-list">
-                  {alternatives.equivalents.map((w) => (
-                    <li key={w.equipment.id}>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        disabled={busy}
-                        onClick={() =>
-                          void book(w.equipment.id, w.date, w.startHour, w.endHour - w.startHour)
-                        }
-                      >
-                        {w.equipment.name} · {w.equipment.labName}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {alternatives.sameEquipment.length === 0 && alternatives.equivalents.length === 0 && (
-              <p>
-                No alternatives in the next 3 weeks. Submit a project request so faculty can
-                allocate time fairly.
-              </p>
-            )}
-          </div>
+          <AlternativesList
+            equipmentId={equipment.id}
+            alternatives={alternatives}
+            busy={busy}
+            onBook={(unitId, w) => void book(unitId, w.date, w.startHour, w.endHour - w.startHour)}
+          />
         )}
       </div>
     </section>
+  );
+}
+
+type Day = Availability['days'][number];
+type Pick = { date: string; hour: number } | null;
+
+interface SlotGridProps {
+  days: Day[];
+  now: Availability['now'];
+  pick: Pick;
+  busy: boolean;
+  onPick: (pick: Pick) => void;
+  /** A booked hour was chosen: try it so the server suggests alternatives. */
+  onBooked: (date: string, hour: number) => void;
+}
+
+/** Hour-by-day timetable. Past hours are inert; free and booked hours are buttons. */
+function SlotGrid({ days, now, pick, busy, onPick, onBooked }: SlotGridProps) {
+  return (
+    <div className="table-scroll">
+      <table className="slots">
+        <caption className="sr-only">
+          Hourly availability for the next 7 days. Choose a free hour to start a booking, or a
+          booked hour to see alternatives.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            {days[0]?.hours.map((h) => (
+              <th scope="col" key={h.hour}>
+                {formatHour(h.hour)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {days.map((day) => (
+            <tr key={day.date}>
+              <th scope="row">{formatDate(day.date)}</th>
+              {day.hours.map((h) => (
+                <td key={h.hour}>
+                  <SlotCell
+                    date={day.date}
+                    hour={h.hour}
+                    booked={h.booked}
+                    past={day.date === now.date && h.hour <= now.hour}
+                    chosen={pick?.date === day.date && pick.hour === h.hour}
+                    busy={busy}
+                    onPick={onPick}
+                    onBooked={onBooked}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+interface SlotCellProps {
+  date: string;
+  hour: number;
+  booked: boolean;
+  past: boolean;
+  chosen: boolean;
+  busy: boolean;
+  onPick: (pick: Pick) => void;
+  onBooked: (date: string, hour: number) => void;
+}
+
+function SlotCell({ date, hour, booked, past, chosen, busy, onPick, onBooked }: SlotCellProps) {
+  const label = `${formatDate(date)} ${formatHour(hour)}`;
+  if (past) {
+    return (
+      <span className="slot slot-past">
+        —<span className="sr-only"> past</span>
+      </span>
+    );
+  }
+  if (booked) {
+    return (
+      <button
+        type="button"
+        className="slot slot-booked"
+        disabled={busy}
+        aria-label={`${label} booked - show alternatives`}
+        onClick={() => onBooked(date, hour)}
+      >
+        Booked
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className={`slot slot-free${chosen ? ' slot-chosen' : ''}`}
+      aria-pressed={chosen}
+      aria-label={`${label} free`}
+      onClick={() => onPick({ date, hour })}
+    >
+      Free
+    </button>
+  );
+}
+
+interface AlternativesListProps {
+  /** The unit the student originally tried to book. */
+  equipmentId: string;
+  alternatives: Alternatives;
+  busy: boolean;
+  onBook: (equipmentId: string, window: TimeWindow) => void;
+}
+
+/** Suggestions after a clash: later times on this unit, or the same time elsewhere. */
+function AlternativesList({ equipmentId, alternatives, busy, onBook }: AlternativesListProps) {
+  const { sameEquipment, equivalents } = alternatives;
+  if (sameEquipment.length === 0 && equivalents.length === 0) {
+    return (
+      <p>
+        No alternatives in the next 3 weeks. Submit a project request so faculty can allocate time
+        fairly.
+      </p>
+    );
+  }
+  return (
+    <div className="alternatives">
+      {sameEquipment.length > 0 && (
+        <>
+          <h3 className="h4">Next free times on this unit</h3>
+          <ul className="inline-list">
+            {sameEquipment.map((w) => (
+              <li key={`${w.date}-${w.startHour}`}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={() => onBook(equipmentId, w)}
+                >
+                  Book {formatRange(w.date, w.startHour, w.endHour)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {equivalents.length > 0 && (
+        <>
+          <h3 className="h4">Same time, equivalent unit in another lab</h3>
+          <ul className="inline-list">
+            {equivalents.map((w) => (
+              <li key={w.equipment.id}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={() => onBook(w.equipment.id, w)}
+                >
+                  {w.equipment.name} · {w.equipment.labName}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }

@@ -21,6 +21,8 @@ export class Store {
   readonly users = new Map<string, User>();
   readonly requests = new Map<string, AccessRequest>();
   private readonly bookingsByEquipment = new Map<string, Booking[]>();
+  /** All bookings in insertion order, kept alongside the per-unit index (O(1) reads). */
+  private readonly bookingList: Booking[] = [];
 
   constructor(data: Dataset) {
     data.departments.forEach((d) => this.departments.set(d.id, d));
@@ -35,8 +37,8 @@ export class Store {
     return `${prefix}-${randomUUID().slice(0, 8)}`;
   }
 
-  allBookings(): Booking[] {
-    return [...this.bookingsByEquipment.values()].flat();
+  allBookings(): readonly Booking[] {
+    return this.bookingList;
   }
 
   bookingsFor(equipmentId: string): Booking[] {
@@ -47,6 +49,7 @@ export class Store {
     const list = this.bookingsByEquipment.get(booking.equipmentId) ?? [];
     list.push(booking);
     this.bookingsByEquipment.set(booking.equipmentId, list);
+    this.bookingList.push(booking);
     return booking;
   }
 

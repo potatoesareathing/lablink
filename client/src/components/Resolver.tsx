@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import type { ConflictGroup, Plan } from '../api';
 import { PlanView } from './PlanView';
-import { Loading, Notice, PageHeader, errorMessage } from './ui';
+import { DataState, Loading, Notice, PageHeader, errorMessage } from './ui';
 
 export function Resolver() {
   const [conflicts, setConflicts] = useState<ConflictGroup[] | null>(null);
@@ -59,39 +59,40 @@ export function Resolver() {
         intro="When several projects compete for the same kind of equipment, LabLink proposes a fair, feasible plan: deadline urgency 50%, fairness 30%, feasibility 20%. Overflow moves to identical units in other labs."
       />
       {error && <Notice tone="bad">{error}</Notice>}
-      {!conflicts ? (
-        <Loading />
-      ) : conflicts.length === 0 ? (
-        <Notice tone="ok">No competing requests right now.</Notice>
-      ) : (
-        <ul className="grid" role="list" aria-label="Equipment with competing requests">
-          {conflicts.map((c) => {
-            const shortfall = c.hoursDemanded > c.freeHours;
-            return (
-              <li key={c.equivalentGroup} className="card">
-                <h2 className="h4">{c.category}</h2>
-                <p className="small">
-                  {c.requestIds.length} competing requests · {c.hoursDemanded} h demanded ·{' '}
-                  {c.freeHours} h free across all labs
-                </p>
-                <p className={`small ${shortfall ? 'text-bad' : 'text-ok'}`}>
-                  {shortfall
-                    ? '⚠ Demand exceeds capacity'
-                    : '✓ Capacity exists if scheduled carefully'}
-                </p>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => void preview(c)}
-                  disabled={busy}
-                >
-                  Generate fair plan
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <DataState
+        items={conflicts}
+        empty={<Notice tone="ok">No competing requests right now.</Notice>}
+      >
+        {(conflicts) => (
+          <ul className="grid" role="list" aria-label="Equipment with competing requests">
+            {conflicts.map((c) => {
+              const shortfall = c.hoursDemanded > c.freeHours;
+              return (
+                <li key={c.equivalentGroup} className="card">
+                  <h2 className="h4">{c.category}</h2>
+                  <p className="small">
+                    {c.requestIds.length} competing requests · {c.hoursDemanded} h demanded ·{' '}
+                    {c.freeHours} h free across all labs
+                  </p>
+                  <p className={`small ${shortfall ? 'text-bad' : 'text-ok'}`}>
+                    {shortfall
+                      ? '⚠ Demand exceeds capacity'
+                      : '✓ Capacity exists if scheduled carefully'}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => void preview(c)}
+                    disabled={busy}
+                  >
+                    Generate fair plan
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </DataState>
 
       <section aria-live="polite" aria-busy={busy}>
         {busy && !plan && <Loading label="Computing allocation" />}
