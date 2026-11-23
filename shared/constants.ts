@@ -1,0 +1,13 @@
+/** Labs are bookable from OPEN_HOUR (inclusive) to CLOSE_HOUR (exclusive), in 1-hour slots. */
+export const OPEN_HOUR = 9;
+export const CLOSE_HOUR = 17;
+export const HOURS_PER_DAY = CLOSE_HOUR - OPEN_HOUR;
+
+/** Maximum hours a single booking may span. */
+export const MAX_BOOKING_HOURS = 4;
+
+/** Weekly hours after which a student's fairness priority starts to drop. */
+export const WEEKLY_FAIR_SHARE_HOURS = 10;
+
+/** How far ahead (days) students can book and the allocator will search. */
+export const BOOKING_HORIZON_DAYS = 21;
