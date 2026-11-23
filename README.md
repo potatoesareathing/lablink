@@ -17,7 +17,7 @@ utilisation dashboard steers demand toward idle equipment.
 | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Discover specialised equipment, dev kits, workstations **across departments**                              | Campus-wide catalogue (30 units, 7 labs, 5 departments) with department/category/availability filters                              |
 | **GenAI-powered**                                                                                          | Gemini powers natural-language discovery, request drafting, faculty summaries and allocation explanations                          |
-| **Equipment discovery**                                                                                    | "I need to measure signal noise on my IoT sensor" â†’ ranked matches with a one-line reason each                                     |
+| **Equipment discovery**                                                                                    | "I need to measure signal noise on my IoT sensor" â†’ ranked matches with a one-line reason each                                   |
 | **Intelligent slot booking**                                                                               | Conflict-free hourly booking; on conflict it suggests the next free windows **and** identical units in other labs at the same time |
 | **Project-based access requests**                                                                          | Students submit project, deadline, hours and equipment; AI drafts the request from a rough idea                                    |
 | **Faculty approvals**                                                                                      | Urgency-sorted queue, AI summary + deterministic risk flags, approve (auto-schedules) or reject with a reason                      |
@@ -57,16 +57,16 @@ React + Vite SPA  â”€â”€HTTPS/JSONâ”€â”€â–¶  Express API
              one container on Google Cloud Run (API + static client)
 ```
 
-| Layer      | Choice                                          | Why                                                                           |
-| ---------- | ----------------------------------------------- | ----------------------------------------------------------------------------- |
-| Language   | TypeScript (strict) everywhere                  | Shared domain types in `shared/`, fewer runtime bugs                          |
-| Frontend   | React 19 + Vite                                 | Fast, small bundle; lazy-loaded views (~75 KB gzipped initial JS)             |
-| Styling    | Plain CSS with tokens                           | Zero dependencies; full control of contrast, focus and dark mode              |
-| Backend    | Express 5                                       | Minimal and readable; serves API and static client from one Cloud Run service |
-| Validation | zod                                             | One schema per input; rejects bad data at the edge with field-level errors    |
+| Layer      | Choice                                                     | Why                                                                           |
+| ---------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Language   | TypeScript (strict) everywhere                             | Shared domain types in `shared/`, fewer runtime bugs                          |
+| Frontend   | React 19 + Vite                                            | Fast, small bundle; lazy-loaded views (~75 KB gzipped initial JS)             |
+| Styling    | Plain CSS with tokens                                      | Zero dependencies; full control of contrast, focus and dark mode              |
+| Backend    | Express 5                                                  | Minimal and readable; serves API and static client from one Cloud Run service |
+| Validation | zod                                                        | One schema per input; rejects bad data at the edge with field-level errors    |
 | AI         | Gemini (`@google/genai`, newest Flash model auto-selected) | Fast, low cost, structured JSON output validated by zod                       |
-| Data       | Seeded in-memory store                          | No database to provision; deterministic demo; swap-in point for Firestore     |
-| Hosting    | Google Cloud Run                                | HTTPS URL, scales to zero, secrets via env / Secret Manager                   |
+| Data       | Seeded in-memory store                                     | No database to provision; deterministic demo; swap-in point for Firestore     |
+| Hosting    | Google Cloud Run                                           | HTTPS URL, scales to zero, secrets via env / Secret Manager                   |
 
 Runtime dependencies are intentionally few: `express`, `helmet`, `express-rate-limit`, `compression`, `zod`, `@google/genai`.
 
@@ -104,18 +104,20 @@ Runtime dependencies are intentionally few: `express`, `helmet`, `express-rate-l
 ## Testing
 
 ```bash
-npm test            # 56 tests: allocation engine, availability, booking, API, AI fallbacks, UI + axe
+npm test            # 71 tests (~86% line coverage): allocation engine, booking, API security, AI fallbacks, every UI view + axe
 npm run test:coverage
 npm run lint && npm run typecheck
 ```
 
-| Suite                            | Covers                                                                                                             |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `server/test/allocation.test.ts` | Scoring, urgency ordering, fairness, equivalent-lab overflow, deadlines, partial/waitlist, determinism             |
-| `server/test/booking.test.ts`    | Time helpers, overlap detection, alternatives, maintenance/past/double-booking guards, seed integrity, utilisation |
-| `server/test/api.test.ts`        | Security headers, forged cookies, roles, validation, payload limits, full approval and conflict-resolution flows   |
-| `server/test/assistant.test.ts`  | AI fallbacks, malformed output, hallucinated ids, prompt-injection wrapping, caching                               |
-| `client/test/ui.test.tsx`        | Sign-in, discovery search, plan rendering, error states, axe accessibility checks                                  |
+| Suite                            | Covers                                                                                                                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `server/test/allocation.test.ts` | Scoring, urgency ordering, fairness, equivalent-lab overflow, deadlines, partial/waitlist, determinism                                                             |
+| `server/test/booking.test.ts`    | Time helpers, overlap detection, alternatives, maintenance/past/double-booking guards, seed integrity, utilisation                                                 |
+| `server/test/api.test.ts`        | Security headers, forged cookies, roles, validation, payload limits, full approval and conflict-resolution flows                                                   |
+| `server/test/assistant.test.ts`  | AI fallbacks, malformed output, hallucinated ids, prompt-injection wrapping, caching                                                                               |
+| `client/test/ui.test.tsx`        | Sign-in, discovery search, plan rendering, error states, axe accessibility checks                                                                                  |
+| `client/test/views.test.tsx`     | App shell and role navigation, booking + conflict alternatives, AI request drafting, approvals, conflict resolver, dashboard, bookings - each with axe WCAG checks |
+| `server/test/config.test.ts`     | Environment validation, safe defaults, signed session tokens and tamper detection                                                                                  |
 
 ## Run locally
 

@@ -139,16 +139,13 @@ describe('discovery & booking', () => {
 describe('requests, approvals and conflict resolution', () => {
   it('lets students submit and only see their own requests', async () => {
     const { app } = testApp();
-    const created = await request(app)
-      .post('/api/requests')
-      .set('Cookie', STUDENT)
-      .send({
-        projectTitle: 'Rover chassis',
-        description: 'Cut acrylic panels for a rover',
-        deadline: '2026-11-28',
-        hoursNeeded: 3,
-        equipmentId: 'laser-1',
-      });
+    const created = await request(app).post('/api/requests').set('Cookie', STUDENT).send({
+      projectTitle: 'Rover chassis',
+      description: 'Cut acrylic panels for a rover',
+      deadline: '2026-11-28',
+      hoursNeeded: 3,
+      equipmentId: 'laser-1',
+    });
     expect(created.status).toBe(201);
     const mine = await request(app).get('/api/requests').set('Cookie', STUDENT);
     expect(
