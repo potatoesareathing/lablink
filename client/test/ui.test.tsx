@@ -5,6 +5,7 @@ import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Discover } from '../src/components/Discover';
 import { PlanView } from '../src/components/PlanView';
+import CampusScene from '../src/components/CampusScene';
 import { SignIn } from '../src/components/SignIn';
 import { StatusBadge } from '../src/components/ui';
 import { formatHour, formatRange, percent } from '../src/format';
@@ -162,6 +163,15 @@ describe('PlanView', () => {
     expect(screen.getByText('Fully allocated')).toBeTruthy();
     expect(screen.getByText('Waitlisted')).toBeTruthy();
     await expectAccessible(container);
+  });
+});
+
+describe('CampusScene', () => {
+  it('renders a decorative, screen-reader-hidden container and degrades without WebGL', () => {
+    const { container } = render(<CampusScene />);
+    const host = container.querySelector('.campus-scene');
+    expect(host?.getAttribute('aria-hidden')).toBe('true');
+    expect(host?.querySelector('canvas')).toBeNull(); // jsdom has no WebGL
   });
 });
 

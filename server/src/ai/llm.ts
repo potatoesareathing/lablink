@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 /** Minimal contract the app needs from a language model; easy to mock in tests. */
 export interface LlmClient {
@@ -35,6 +35,12 @@ export function isRetryable(err: unknown): boolean {
   );
 }
 
+/** A 400 complaining about thinking settings: the model does not support that control. */
+export function isThinkingConfigError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /\b400\b|INVALID_ARGUMENT/.test(msg) && /thinking/i.test(msg);
+}
+
 const FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 
 export class GeminiClient implements LlmClient {
@@ -42,12 +48,14 @@ export class GeminiClient implements LlmClient {
   private modelsPromise?: Promise<string[]>;
   /** Mutable failover order; the last model that succeeded is kept first. */
   private order: string[] = [];
+  /** Models that rejected the thinking-level setting. */
+  private readonly noThinkingControl = new Set<string>();
 
   /** @param model a model id, or "auto" to choose from the models the key can use. */
   constructor(
     apiKey: string,
     private readonly model: string,
-    private readonly timeoutMs = 9_000,
+    private readonly timeoutMs = 12_000,
     private readonly maxAttempts = 3,
   ) {
     this.ai = new GoogleGenAI({ apiKey });
@@ -85,6 +93,7 @@ export class GeminiClient implements LlmClient {
   ): Promise<unknown> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const minimalThinking = !this.noThinkingControl.has(model);
     try {
       const response = await this.ai.models.generateContent({
         model,
@@ -94,7 +103,9 @@ export class GeminiClient implements LlmClient {
           responseMimeType: 'application/json',
           responseJsonSchema: req.jsonSchema,
           temperature: 0.2,
-          // Generous limit: newer models may spend part of the budget on internal reasoning.
+          // Short structured tasks: keep internal reasoning minimal for low latency.
+          ...(minimalThinking ? { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } } : {}),
+          // Generous limit in case a model still spends budget on reasoning.
           maxOutputTokens: 8192,
           abortSignal: controller.signal,
         },
@@ -102,6 +113,14 @@ export class GeminiClient implements LlmClient {
       const text = response.text;
       if (!text) throw new Error('Empty model response');
       return JSON.parse(text);
+    } catch (err) {
+      // Some models do not accept thinking controls: remember and retry once without them.
+      if (minimalThinking && isThinkingConfigError(err)) {
+        this.noThinkingControl.add(model);
+        clearTimeout(timer);
+        return this.callModel(model, req);
+      }
+      throw err;
     } finally {
       clearTimeout(timer);
     }

@@ -69,8 +69,6 @@ export function App() {
     setUser(null);
   }
 
-  if (!ready) return <Loading label="Starting LabLink" />;
-
   return (
     <>
       <a className="skip-link" href="#main">
@@ -115,7 +113,12 @@ export function App() {
 
       {error && <Notice tone="bad">{error}</Notice>}
 
-      {!user ? (
+      {!ready ? (
+        // Same frame as the loaded app, so nothing shifts when the session resolves.
+        <main id="main" className="container">
+          <Loading label="Starting LabLink" />
+        </main>
+      ) : !user ? (
         <SignIn onSignedIn={loadSession} />
       ) : (
         <main id="main" className="container" tabIndex={-1}>

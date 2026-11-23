@@ -104,7 +104,7 @@ Runtime dependencies are intentionally few: `express`, `helmet`, `express-rate-l
 ## Testing
 
 ```bash
-npm test            # 73 tests (~86% line coverage): allocation engine, booking, API security, AI fallbacks, every UI view + axe
+npm test            # 74 tests (~86% line coverage): allocation engine, booking, API security, AI fallbacks, every UI view + axe
 npm run test:coverage
 npm run lint && npm run typecheck
 ```

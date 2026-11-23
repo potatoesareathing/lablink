@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Assistant, templateExplanation } from '../src/ai/assistant.js';
 import type { LlmClient } from '../src/ai/llm.js';
-import { TtlCache, isRetryable, pickFlashModel, rankFlashModels } from '../src/ai/llm.js';
+import {
+  TtlCache,
+  isRetryable,
+  isThinkingConfigError,
+  pickFlashModel,
+  rankFlashModels,
+} from '../src/ai/llm.js';
 import { createSeed } from '../src/data/seed.js';
 import { Store } from '../src/data/store.js';
 import { NOW } from './helpers.js';
@@ -129,6 +135,16 @@ describe('pickFlashModel', () => {
     expect(isRetryable(new Error('This operation was aborted'))).toBe(true);
     expect(isRetryable(new Error('RESOURCE_EXHAUSTED'))).toBe(true);
     expect(isRetryable(new Error('{"code":400,"message":"Invalid schema"}'))).toBe(false);
+  });
+});
+
+describe('isThinkingConfigError', () => {
+  it('detects models that reject thinking controls', () => {
+    expect(
+      isThinkingConfigError(new Error('{"code":400,"message":"thinking_level is not supported"}')),
+    ).toBe(true);
+    expect(isThinkingConfigError(new Error('{"code":400,"message":"Invalid schema"}'))).toBe(false);
+    expect(isThinkingConfigError(new Error('503 UNAVAILABLE thinking'))).toBe(false);
   });
 });
 

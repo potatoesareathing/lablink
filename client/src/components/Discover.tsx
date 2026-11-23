@@ -198,14 +198,24 @@ function EquipmentCard({
 }) {
   return (
     <li className="card equipment">
-      <div className="equipment-head">
-        <h3 className="h4">{item.name}</h3>
+      <div className="asset-strip">
+        <span className="asset-id">
+          <span className="sr-only">Asset tag </span>
+          {item.id}
+        </span>
         <StatusBadge status={item.status} />
       </div>
-      <p className="muted small">
-        {item.category} · {item.labName}, {item.departmentName}
-      </p>
-      <p className="small">{item.specs}</p>
+      <h3 className="h4">{item.name}</h3>
+      <dl className="asset-meta">
+        <dt>Type</dt>
+        <dd>{item.category}</dd>
+        <dt>Lab</dt>
+        <dd>
+          {item.labName}, {item.departmentName}
+        </dd>
+        <dt>Specs</dt>
+        <dd>{item.specs}</dd>
+      </dl>
       {reason && (
         <p className="reason small">
           <span aria-hidden="true">✦ </span>
@@ -217,9 +227,8 @@ function EquipmentCard({
         className="btn btn-secondary"
         disabled={item.status !== 'available'}
         onClick={() => onSelect(item.id)}
-        aria-label={`View availability and book ${item.name}`}
       >
-        View slots &amp; book
+        View slots<span className="sr-only"> for {item.name}</span>
       </button>
     </li>
   );
