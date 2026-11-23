@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Assistant, templateExplanation } from '../src/ai/assistant.js';
 import type { LlmClient } from '../src/ai/llm.js';
-import { TtlCache, pickFlashModel } from '../src/ai/llm.js';
+import { TtlCache, isRetryable, pickFlashModel, rankFlashModels } from '../src/ai/llm.js';
 import { createSeed } from '../src/data/seed.js';
 import { Store } from '../src/data/store.js';
 import { NOW } from './helpers.js';
@@ -105,6 +105,30 @@ describe('pickFlashModel', () => {
       ]),
     ).toBe('gemini-3.8-flash');
     expect(pickFlashModel(['gemini-2.5-pro'])).toBeUndefined();
+  });
+
+  it('orders failover: newest flash, newest lite, then older versions', () => {
+    expect(
+      rankFlashModels([
+        'gemini-2.5-flash',
+        'gemini-3.8-flash',
+        'gemini-3.8-flash-lite',
+        'gemini-2.5-flash-lite',
+        'gemini-3.8-flash-tts',
+      ]),
+    ).toEqual([
+      'gemini-3.8-flash',
+      'gemini-3.8-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+    ]);
+  });
+
+  it('treats overload, quota and timeouts as retryable but not bad requests', () => {
+    expect(isRetryable(new Error('{"code":503,"status":"UNAVAILABLE"}'))).toBe(true);
+    expect(isRetryable(new Error('This operation was aborted'))).toBe(true);
+    expect(isRetryable(new Error('RESOURCE_EXHAUSTED'))).toBe(true);
+    expect(isRetryable(new Error('{"code":400,"message":"Invalid schema"}'))).toBe(false);
   });
 });
 

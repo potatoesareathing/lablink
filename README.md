@@ -81,7 +81,7 @@ Runtime dependencies are intentionally few: `express`, `helmet`, `express-rate-l
 
 - Structured output (`responseJsonSchema`) + zod validation on every response; unknown ids are dropped.
 - User text is wrapped in `<user_input>` tags, angle brackets are stripped, and the system prompt tells the model to treat it as data (prompt-injection hygiene).
-- 10 s timeout, TTL/LRU response cache, rate limit of 20 AI calls/min per IP.
+- Model failover: newest Flash, then Flash-Lite, then older versions on overload/quota/timeouts (9 s per attempt); TTL/LRU response cache, rate limit of 20 AI calls/min per IP.
 - The app is fully functional with no API key.
 
 ## Security
@@ -104,7 +104,7 @@ Runtime dependencies are intentionally few: `express`, `helmet`, `express-rate-l
 ## Testing
 
 ```bash
-npm test            # 71 tests (~86% line coverage): allocation engine, booking, API security, AI fallbacks, every UI view + axe
+npm test            # 73 tests (~86% line coverage): allocation engine, booking, API security, AI fallbacks, every UI view + axe
 npm run test:coverage
 npm run lint && npm run typecheck
 ```

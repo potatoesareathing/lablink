@@ -6,34 +6,56 @@ export interface LlmClient {
   generateJson(req: { system: string; prompt: string; jsonSchema: object }): Promise<unknown>;
 }
 
+const SPECIALISED = /(tts|image|live|audio|embedding|thinking|exp|preview|computer|robotics)/;
+const version = (name: string) => Number(/^gemini-(\d+(?:\.\d+)?)/.exec(name)?.[1] ?? 0);
+
 /**
- * Picks the newest general-purpose Flash model from the names the API key can use,
- * skipping specialised variants (lite, TTS, image, live, embeddings).
+ * Orders usable Flash models for failover: newest general Flash first, then the newest
+ * Flash-Lite (fast, rarely overloaded), then older Flash/Flash-Lite versions.
  */
-export function pickFlashModel(available: string[]): string | undefined {
-  const version = (name: string) => Number(/^gemini-(\d+(?:\.\d+)?)/.exec(name)?.[1] ?? 0);
-  return available
-    .filter((n) => /^gemini-[\d.]+-flash/.test(n))
-    .filter((n) => !/(lite|tts|image|live|audio|embedding|thinking|exp)/.test(n))
-    .sort((a, b) => version(b) - version(a) || a.length - b.length || a.localeCompare(b))[0];
+export function rankFlashModels(available: string[]): string[] {
+  const flash = available.filter((n) => /^gemini-[\d.]+-flash/.test(n) && !SPECIALISED.test(n));
+  const byVersion = (a: string, b: string) =>
+    version(b) - version(a) || a.length - b.length || a.localeCompare(b);
+  const full = flash.filter((n) => !n.includes('lite')).sort(byVersion);
+  const lite = flash.filter((n) => n.includes('lite')).sort(byVersion);
+  const ordered = [full[0], lite[0], ...full.slice(1), ...lite.slice(1)];
+  return [...new Set(ordered.filter((n): n is string => !!n))].slice(0, 4);
 }
+
+/** Newest general-purpose Flash model, if any. */
+export const pickFlashModel = (available: string[]): string | undefined =>
+  rankFlashModels(available).find((n) => !n.includes('lite'));
+
+/** Overload, quota and timeout errors are worth retrying on another model. */
+export function isRetryable(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /\b(429|500|503|504)\b|UNAVAILABLE|RESOURCE_EXHAUSTED|overloaded|high demand|abort/i.test(
+    msg,
+  );
+}
+
+const FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 
 export class GeminiClient implements LlmClient {
   private readonly ai: GoogleGenAI;
-  private modelPromise?: Promise<string>;
+  private modelsPromise?: Promise<string[]>;
+  /** Mutable failover order; the last model that succeeded is kept first. */
+  private order: string[] = [];
 
-  /** @param model a model id, or "auto" to pick the newest Flash model at first use. */
+  /** @param model a model id, or "auto" to choose from the models the key can use. */
   constructor(
     apiKey: string,
     private readonly model: string,
-    private readonly timeoutMs = 20_000,
+    private readonly timeoutMs = 9_000,
+    private readonly maxAttempts = 3,
   ) {
     this.ai = new GoogleGenAI({ apiKey });
   }
 
-  /** Resolves the model once: uses the configured id if available, else the best Flash model. */
-  private resolveModel(): Promise<string> {
-    this.modelPromise ??= (async () => {
+  /** Lists available models once and builds the failover order. */
+  private resolveModels(): Promise<string[]> {
+    this.modelsPromise ??= (async () => {
       try {
         const names: string[] = [];
         const pager = await this.ai.models.list({ config: { pageSize: 100 } });
@@ -43,25 +65,24 @@ export class GeminiClient implements LlmClient {
           }
           if (names.length > 300) break;
         }
-        if (this.model !== 'auto' && names.includes(this.model)) return this.model;
-        const picked = pickFlashModel(names) ?? this.model;
-        console.info(`[ai] using model ${picked}`);
-        return picked;
+        const ranked = rankFlashModels(names);
+        const preferred = this.model !== 'auto' && names.includes(this.model) ? [this.model] : [];
+        const order = [...new Set([...preferred, ...ranked])];
+        console.info(`[ai] model failover order: ${order.join(' > ')}`);
+        return order.length ? order : FALLBACK_MODELS;
       } catch (err) {
         console.warn('[ai] model listing failed:', err instanceof Error ? err.message : err);
-        this.modelPromise = undefined; // retry on next call
-        return this.model === 'auto' ? 'gemini-2.5-flash' : this.model;
+        this.modelsPromise = undefined; // retry listing on the next call
+        return this.model === 'auto' ? FALLBACK_MODELS : [this.model];
       }
     })();
-    return this.modelPromise;
+    return this.modelsPromise;
   }
 
-  async generateJson(req: {
-    system: string;
-    prompt: string;
-    jsonSchema: object;
-  }): Promise<unknown> {
-    const model = await this.resolveModel();
+  private async callModel(
+    model: string,
+    req: { system: string; prompt: string; jsonSchema: object },
+  ): Promise<unknown> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -84,6 +105,29 @@ export class GeminiClient implements LlmClient {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  async generateJson(req: {
+    system: string;
+    prompt: string;
+    jsonSchema: object;
+  }): Promise<unknown> {
+    if (this.order.length === 0) this.order = [...(await this.resolveModels())];
+    let lastError: unknown;
+    for (const model of this.order.slice(0, this.maxAttempts)) {
+      try {
+        const result = await this.callModel(model, req);
+        // Stick with the model that worked.
+        this.order = [model, ...this.order.filter((m) => m !== model)];
+        return result;
+      } catch (err) {
+        lastError = err;
+        if (!isRetryable(err)) throw err;
+        console.warn(`[ai] ${model} unavailable, trying next model`);
+        this.order = [...this.order.filter((m) => m !== model), model];
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('All models unavailable');
   }
 }
 
