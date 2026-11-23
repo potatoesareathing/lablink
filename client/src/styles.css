@@ -488,11 +488,10 @@ label.check input {
 }
 
 .reason {
-  border-left: 3px solid var(--accent);
   background: var(--accent-soft);
   color: var(--text);
-  padding: 0.4rem 0.7rem;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
 }
 .risks {
   color: var(--warn);
@@ -617,7 +616,7 @@ table {
 
 /* ---------- Plan & dashboard ---------- */
 .plan-item {
-  border-left: 4px solid var(--accent);
+  background: var(--surface-2);
 }
 .kpis {
   display: grid;
