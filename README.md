@@ -22,6 +22,9 @@ utilisation dashboard steers demand toward idle equipment.
 | **Project-based access requests**                                                                          | Students submit project, deadline, hours and equipment; AI drafts the request from a rough idea                                    |
 | **Faculty approvals**                                                                                      | Urgency-sorted queue, AI summary + deterministic risk flags, approve (auto-schedules) or reject with a reason                      |
 | **Optimising resource utilisation**                                                                        | Utilisation dashboard (per unit and department) + rebalancing suggestions toward idle equivalents                                  |
+| **Equipment tracking**                                                                                     | Faculty equipment desk: hand-out and return each unit, live "who has what", overdue detection                                      |
+| **Overdue handling**                                                                                       | Late returns get a capped fine (₹50/h, max ₹500), are escalated to faculty, and lower the student's fairness priority              |
+| **Notifications**                                                                                          | In-app notifications for approvals, upcoming bookings, overdue items and fines (`GET /api/notifications`)                          |
 | **Resolve scheduling conflicts fairly and feasibly** based on **deadlines, availability and requirements** | Deterministic fair-allocation engine (below) + plain-language explanations                                                         |
 
 ## The fair allocation engine
@@ -81,7 +84,7 @@ Runtime dependencies are intentionally few: `express`, `helmet`, `express-rate-l
 
 - Structured output (`responseJsonSchema`) + zod validation on every response; unknown ids are dropped.
 - User text is wrapped in `<user_input>` tags, angle brackets are stripped, and the system prompt tells the model to treat it as data (prompt-injection hygiene).
-- Model failover: newest Flash, then Flash-Lite, then older versions on overload/quota/timeouts (9 s per attempt); TTL/LRU response cache, rate limit of 20 AI calls/min per IP.
+- Model failover: newest Flash-Lite (lowest latency), then Flash, then older versions on overload/quota/timeouts (9 s per attempt); TTL/LRU response cache, rate limit of 20 AI calls/min per IP.
 - The app is fully functional with no API key.
 
 ## Security
@@ -104,7 +107,7 @@ Runtime dependencies are intentionally few: `express`, `helmet`, `express-rate-l
 ## Testing
 
 ```bash
-npm test            # 74 tests (~86% line coverage): allocation engine, booking, API security, AI fallbacks, every UI view + axe
+npm test            # 87 tests (~92% line coverage): allocation engine, booking, API security, AI fallbacks, every UI view + axe
 npm run test:coverage
 npm run lint && npm run typecheck
 ```

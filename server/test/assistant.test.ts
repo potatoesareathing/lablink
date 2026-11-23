@@ -113,7 +113,7 @@ describe('pickFlashModel', () => {
     expect(pickFlashModel(['gemini-2.5-pro'])).toBeUndefined();
   });
 
-  it('orders failover: newest flash, newest lite, then older versions', () => {
+  it('orders failover: newest lite, newest flash, then older versions', () => {
     expect(
       rankFlashModels([
         'gemini-2.5-flash',
@@ -123,10 +123,10 @@ describe('pickFlashModel', () => {
         'gemini-3.8-flash-tts',
       ]),
     ).toEqual([
-      'gemini-3.8-flash',
       'gemini-3.8-flash-lite',
-      'gemini-2.5-flash',
+      'gemini-3.8-flash',
       'gemini-2.5-flash-lite',
+      'gemini-2.5-flash',
     ]);
   });
 

@@ -10,8 +10,9 @@ const SPECIALISED = /(tts|image|live|audio|embedding|thinking|exp|preview|comput
 const version = (name: string) => Number(/^gemini-(\d+(?:\.\d+)?)/.exec(name)?.[1] ?? 0);
 
 /**
- * Orders usable Flash models for failover: newest general Flash first, then the newest
- * Flash-Lite (fast, rarely overloaded), then older Flash/Flash-Lite versions.
+ * Orders usable Flash models for failover. The newest Flash-Lite goes first: these are
+ * short structured tasks where its low latency matters more than extra reasoning. Then
+ * the newest full Flash, then older Flash-Lite/Flash versions.
  */
 export function rankFlashModels(available: string[]): string[] {
   const flash = available.filter((n) => /^gemini-[\d.]+-flash/.test(n) && !SPECIALISED.test(n));
@@ -19,7 +20,7 @@ export function rankFlashModels(available: string[]): string[] {
     version(b) - version(a) || a.length - b.length || a.localeCompare(b);
   const full = flash.filter((n) => !n.includes('lite')).sort(byVersion);
   const lite = flash.filter((n) => n.includes('lite')).sort(byVersion);
-  const ordered = [full[0], lite[0], ...full.slice(1), ...lite.slice(1)];
+  const ordered = [lite[0], full[0], ...lite.slice(1), ...full.slice(1)];
   return [...new Set(ordered.filter((n): n is string => !!n))].slice(0, 4);
 }
 

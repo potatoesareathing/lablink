@@ -12,6 +12,7 @@ import { bookingRoutes } from './routes/bookings.js';
 import { equipmentRoutes } from './routes/equipment.js';
 import { requestRoutes } from './routes/requests.js';
 import { sessionRoutes } from './routes/session.js';
+import { notificationRoutes, trackingRoutes } from './routes/tracking.js';
 import { utilisationReport } from './services/stats.js';
 
 export function createApp(deps: AppDeps) {
@@ -63,6 +64,8 @@ export function createApp(deps: AppDeps) {
   app.use('/api/bookings', bookingRoutes(deps));
   app.use('/api/requests', requestRoutes(deps));
   app.use('/api/allocations', allocationRoutes(deps));
+  app.use('/api/tracking', trackingRoutes(deps));
+  app.use('/api/notifications', notificationRoutes(deps));
   app.use('/api/ai', aiLimiter, aiRoutes(deps));
   app.get('/api/stats/utilisation', (req, res) => {
     requireRole(req, 'faculty');

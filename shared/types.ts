@@ -39,6 +39,18 @@ export interface User {
   departmentId: string;
   /** Number of recent requests that were rejected or waitlisted (fairness input). */
   recentDenials: number;
+  /** Late returns on record; each one lowers fairness priority slightly. */
+  overdueStrikes?: number;
+}
+
+/** Physical lifecycle of a booked unit: reserved -> handed out -> returned. */
+export type BookingStatus = 'scheduled' | 'checked_out' | 'returned';
+
+export interface Fine {
+  amount: number;
+  overdueHours: number;
+  paid: boolean;
+  paidAt?: string;
 }
 
 export interface Booking {
@@ -49,6 +61,17 @@ export interface Booking {
   startHour: number;
   endHour: number;
   requestId?: string;
+  status?: BookingStatus;
+  checkedOutAt?: string;
+  returnedAt?: string;
+  fine?: Fine;
+}
+
+export interface Notification {
+  id: string;
+  tone: 'info' | 'ok' | 'warn' | 'bad';
+  title: string;
+  detail: string;
 }
 
 export type RequestStatus = 'pending' | 'approved' | 'partial' | 'waitlisted' | 'rejected';
@@ -79,7 +102,8 @@ export type ReasonCode =
   | 'HEAVY_RECENT_USAGE'
   | 'MOVED_TO_EQUIVALENT'
   | 'INSUFFICIENT_CAPACITY'
-  | 'FULLY_ALLOCATED';
+  | 'FULLY_ALLOCATED'
+  | 'OVERDUE_HISTORY';
 
 export type AllocationOutcome = 'allocated' | 'partial' | 'waitlisted';
 

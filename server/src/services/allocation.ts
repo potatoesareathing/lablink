@@ -10,7 +10,7 @@
  *   - a student is never booked on two units at the same hour,
  *   - nothing is scheduled after a request's deadline.
  */
-import { WEEKLY_FAIR_SHARE_HOURS } from '../../../shared/constants.js';
+import { OVERDUE_STRIKE_PENALTY, WEEKLY_FAIR_SHARE_HOURS } from '../../../shared/constants.js';
 import type {
   AccessRequest,
   AllocationResult,
@@ -77,7 +77,12 @@ export function scoreRequest(
   const daysLeft = Math.max(0, daysBetween(now.date, request.deadline));
   const urgency = 1 / (1 + daysLeft);
   const usagePenalty = Math.min(1, hoursThisWeek / WEEKLY_FAIR_SHARE_HOURS);
-  const fairness = clamp01(1 - usagePenalty + 0.1 * (user?.recentDenials ?? 0));
+  const fairness = clamp01(
+    1 -
+      usagePenalty +
+      0.1 * (user?.recentDenials ?? 0) -
+      OVERDUE_STRIKE_PENALTY * (user?.overdueStrikes ?? 0),
+  );
   const feasibility =
     request.hoursNeeded > 0 ? Math.min(1, freeHoursBeforeDeadline / request.hoursNeeded) : 1;
   const priority =
@@ -138,6 +143,7 @@ export function allocate(input: AllocationInput): AllocationResult[] {
     if (daysBetween(now.date, request.deadline) <= 3) reasons.push('URGENT_DEADLINE');
     if ((user?.recentDenials ?? 0) > 0) reasons.push('FAIRNESS_PRIORITY');
     if (hoursThisWeek >= WEEKLY_FAIR_SHARE_HOURS * 0.8) reasons.push('HEAVY_RECENT_USAGE');
+    if ((user?.overdueStrikes ?? 0) > 0) reasons.push('OVERDUE_HISTORY');
     if (granted.some((s) => s.equipmentId !== request.equipmentId))
       reasons.push('MOVED_TO_EQUIVALENT');
     const hoursGranted = granted.length;

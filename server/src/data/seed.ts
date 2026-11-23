@@ -341,6 +341,7 @@ const users: User[] = [
     role: 'student',
     departmentId: 'mech',
     recentDenials: 0,
+    overdueStrikes: 1,
   },
   { id: 'stu-diya', name: 'Diya Nair', role: 'student', departmentId: 'des', recentDenials: 1 },
   { id: 'stu-kabir', name: 'Kabir Rao', role: 'student', departmentId: 'cse', recentDenials: 0 },
@@ -474,6 +475,40 @@ export function createSeed(today: string): Dataset {
       date: d(4),
       startHour: 9,
       endHour: 13,
+    },
+    // Tracking demo: one unit still out and overdue, one returned late with an unpaid
+    // fine, and one checked out today.
+    {
+      id: 'bk-14',
+      equipmentId: 'solder-1',
+      userId: 'stu-rohan',
+      date: d(-1),
+      startHour: 14,
+      endHour: 16,
+      status: 'checked_out',
+      checkedOutAt: `${d(-1)}T08:30:00Z`,
+    },
+    {
+      id: 'bk-15',
+      equipmentId: 'spectro-1',
+      userId: 'stu-aarav',
+      date: d(-1),
+      startHour: 9,
+      endHour: 11,
+      status: 'returned',
+      checkedOutAt: `${d(-1)}T03:30:00Z`,
+      returnedAt: `${d(-1)}T08:30:00Z`,
+      fine: { amount: 150, overdueHours: 3, paid: false },
+    },
+    {
+      id: 'bk-16',
+      equipmentId: 'fpga-2',
+      userId: 'stu-diya',
+      date: d(0),
+      startHour: 9,
+      endHour: 17,
+      status: 'checked_out',
+      checkedOutAt: `${d(0)}T03:30:00Z`,
     },
   ];
 

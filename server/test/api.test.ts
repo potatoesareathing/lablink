@@ -119,7 +119,7 @@ describe('discovery & booking', () => {
     expect(ok.status).toBe(201);
     const clash = await request(app)
       .post('/api/bookings')
-      .set('Cookie', cookie('stu-diya'))
+      .set('Cookie', cookie('stu-meera'))
       .send({ equipmentId: 'laser-1', date: NOW.date, startHour: 11, hours: 1 });
     expect(clash.status).toBe(409);
     expect(clash.body.alternatives.sameEquipment.length).toBeGreaterThan(0);

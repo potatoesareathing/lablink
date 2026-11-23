@@ -112,6 +112,7 @@ const REASON_TEXT: Record<ReasonCode, string> = {
   MOVED_TO_EQUIVALENT: 'part of the time is on an identical unit in another lab',
   INSUFFICIENT_CAPACITY: 'there is not enough free capacity before the deadline',
   FULLY_ALLOCATED: 'all requested hours fit before the deadline',
+  OVERDUE_HISTORY: 'a previous late return slightly lowered priority',
 };
 
 export function templateExplanation(r: AllocationResult, studentName: string): string {
