@@ -1,0 +1,19 @@
+# Render Blueprint: one free Docker web service built from ./Dockerfile.
+services:
+  - type: web
+    name: lablink
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: CAMPUS_UTC_OFFSET_MINUTES
+        value: '330'
+      - key: GEMINI_API_KEY
+        sync: false # entered in the Render dashboard, never committed

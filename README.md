@@ -128,12 +128,21 @@ node --env-file=.env dist/server/server/src/index.js     # http://localhost:8080
 
 For development with hot reload, run `npm run dev:server` and `npm run dev:client` (Vite proxies `/api`).
 
-## Deploy to Google Cloud Run
+## Deploy
+
+The app is a single Docker container listening on `$PORT`, so it runs on any container host.
+
+### Render (free, used for the live demo)
+
+`render.yaml` is a Render Blueprint: **New → Blueprint → select this repo**, then paste `GEMINI_API_KEY`
+when prompted. `SESSION_SECRET` is generated automatically.
+
+### Google Cloud Run
 
 ```bash
 gcloud run deploy lablink --source . --region asia-south1 --allow-unauthenticated \
   --set-env-vars GEMINI_API_KEY=YOUR_KEY,SESSION_SECRET=$(openssl rand -hex 32) \
-  --min-instances 1 --max-instances 3
+  --min-instances 0 --max-instances 1
 ```
 
 The multi-stage `Dockerfile` builds the client and server, then ships only production dependencies and compiled output.
