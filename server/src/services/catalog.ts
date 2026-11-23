@@ -47,13 +47,11 @@ export interface CatalogFilter {
 export function filterCatalog(items: EquipmentView[], f: CatalogFilter): EquipmentView[] {
   return items.filter(
     (e) =>
-      (!f.departmentId || departmentOf(e) === f.departmentId) &&
+      (!f.departmentId || e.departmentId === f.departmentId) &&
       (!f.category || e.category === f.category) &&
       (!f.availableOnly || e.status === 'available'),
   );
 }
-
-const departmentOf = (e: EquipmentView): string => e.labId.split('-')[0] ?? '';
 
 /**
  * Deterministic relevance search: weights matches in name, category, tags and specs.

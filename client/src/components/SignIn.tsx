@@ -4,7 +4,7 @@ import type { DemoUser } from '../api';
 import { Loading, Notice, errorMessage } from './ui';
 
 // Three.js is loaded only here, after first paint, so it never delays the app itself.
-const CampusScene = lazy(() => import('./CampusScene'));
+const CampusScene = lazy(() => import('./CampusScene').then((m) => ({ default: m.CampusScene })));
 
 /** Landing page: what LabLink is, a live 3D campus, and demo personas for each role. */
 export function SignIn({ onSignedIn }: { onSignedIn: () => void }) {

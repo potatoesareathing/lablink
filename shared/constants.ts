@@ -18,9 +18,3 @@ export const FINE_CAP = 500;
 
 /** Fairness penalty per late return on record. */
 export const OVERDUE_STRIKE_PENALTY = 0.15;
-
-/**
- * Demo-only UPI payee. The "@invalid" handle belongs to no bank, so the QR can never
- * move real money. Replace via configuration with an institutional UPI ID in production.
- */
-export const DEMO_UPI_VPA = 'lablink-demo@invalid';

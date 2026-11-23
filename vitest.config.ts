@@ -15,6 +15,7 @@ export default defineConfig({
         'server/src/index.ts',
         'client/src/main.tsx',
         'client/src/components/CampusScene.tsx',
+        'client/src/three/**',
       ],
       reporter: ['text-summary'],
     },

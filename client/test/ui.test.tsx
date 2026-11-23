@@ -5,7 +5,7 @@ import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Discover } from '../src/components/Discover';
 import { PlanView } from '../src/components/PlanView';
-import CampusScene from '../src/components/CampusScene';
+import { CampusScene } from '../src/components/CampusScene';
 import { SignIn } from '../src/components/SignIn';
 import { StatusBadge } from '../src/components/ui';
 import { formatHour, formatRange, percent } from '../src/format';
@@ -17,6 +17,7 @@ const scope = {
   category: 'Oscilloscope',
   equivalentGroup: 'scope',
   labId: 'ece-elec',
+  departmentId: 'ece',
   specs: '4-ch 200 MHz',
   tags: ['signal'],
   status: 'available',

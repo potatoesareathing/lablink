@@ -4,9 +4,7 @@ import { api } from '../api';
 import { BookingPanel } from './BookingPanel';
 import { Loading, Notice, PageHeader, StatusBadge, errorMessage } from './ui';
 
-const CampusScene = lazy(() => import('./CampusScene'));
-
-const departmentOf = (e: EquipmentView) => e.labId.split('-')[0] ?? '';
+const CampusScene = lazy(() => import('./CampusScene').then((m) => ({ default: m.CampusScene })));
 
 /**
  * Interactive campus map. The 3D view (mouse/touch: drag to rotate, scroll to zoom,
@@ -31,7 +29,7 @@ export function CampusMap() {
   }, []);
 
   const labs = useMemo(() => {
-    const inDept = (items ?? []).filter((e) => departmentOf(e) === selected);
+    const inDept = (items ?? []).filter((e) => e.departmentId === selected);
     const byLab = new Map<string, { name: string; location: string; equipment: EquipmentView[] }>();
     for (const e of inDept) {
       const lab = byLab.get(e.labId) ?? { name: e.labName, location: e.location, equipment: [] };
@@ -44,10 +42,10 @@ export function CampusMap() {
   const counts = useMemo(() => {
     const map = new Map<string, { total: number; available: number }>();
     for (const e of items ?? []) {
-      const c = map.get(departmentOf(e)) ?? { total: 0, available: 0 };
+      const c = map.get(e.departmentId) ?? { total: 0, available: 0 };
       c.total += 1;
       if (e.status === 'available') c.available += 1;
-      map.set(departmentOf(e), c);
+      map.set(e.departmentId, c);
     }
     return map;
   }, [items]);

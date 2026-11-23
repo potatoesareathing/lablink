@@ -55,6 +55,7 @@ export class Store {
     const dept = lab ? this.departments.get(lab.departmentId) : undefined;
     return {
       ...e,
+      departmentId: lab?.departmentId ?? '',
       labName: lab?.name ?? 'Unknown lab',
       departmentName: dept?.name ?? 'Unknown department',
       location: lab?.location ?? '',

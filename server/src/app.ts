@@ -1,20 +1,24 @@
 import path from 'node:path';
 import compression from 'compression';
 import express from 'express';
-import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import type { AppDeps } from './deps.js';
 import { errorHandler, notFoundHandler } from './middleware/errors.js';
-import { sessionMiddleware, requireRole } from './middleware/session.js';
+import { aiLimiter, apiLimiter } from './middleware/rateLimits.js';
+import { sessionMiddleware } from './middleware/session.js';
 import { aiRoutes } from './routes/ai.js';
 import { allocationRoutes } from './routes/allocations.js';
 import { bookingRoutes } from './routes/bookings.js';
 import { equipmentRoutes } from './routes/equipment.js';
 import { requestRoutes } from './routes/requests.js';
 import { sessionRoutes } from './routes/session.js';
+import { statsRoutes } from './routes/stats.js';
 import { notificationRoutes, trackingRoutes } from './routes/tracking.js';
-import { utilisationReport } from './services/stats.js';
 
+/** Maximum accepted JSON body; larger payloads get 413. */
+const JSON_BODY_LIMIT = '20kb';
+
+/** Builds the Express app: security middleware, API routes, then the static client. */
 export function createApp(deps: AppDeps) {
   const app = express();
   app.disable('x-powered-by');
@@ -36,26 +40,10 @@ export function createApp(deps: AppDeps) {
     }),
   );
   app.use(compression());
-  app.use(express.json({ limit: '20kb' }));
+  app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', ai: deps.assistant.enabled });
-  });
-
-  const apiLimiter = rateLimit({
-    windowMs: 15 * 60_000,
-    limit: 600,
-    standardHeaders: 'draft-8',
-    legacyHeaders: false,
-  });
-  const aiLimiter = rateLimit({
-    windowMs: 60_000,
-    limit: 20,
-    standardHeaders: 'draft-8',
-    legacyHeaders: false,
-    message: {
-      error: { code: 'rate_limited', message: 'Too many AI requests - please wait a minute.' },
-    },
   });
 
   app.use('/api', apiLimiter, sessionMiddleware(deps.store, deps.sessionSecret));
@@ -67,10 +55,7 @@ export function createApp(deps: AppDeps) {
   app.use('/api/tracking', trackingRoutes(deps));
   app.use('/api/notifications', notificationRoutes(deps));
   app.use('/api/ai', aiLimiter, aiRoutes(deps));
-  app.get('/api/stats/utilisation', (req, res) => {
-    requireRole(req, 'faculty');
-    res.json(utilisationReport(deps.store, deps.clock()));
-  });
+  app.use('/api/stats', statsRoutes(deps));
   app.use('/api', notFoundHandler);
 
   if (deps.clientDir) {

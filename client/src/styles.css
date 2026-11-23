@@ -157,6 +157,10 @@ main:focus {
   outline: none;
 }
 
+.noscript {
+  padding: 2rem;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

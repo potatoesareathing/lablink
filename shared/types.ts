@@ -119,13 +119,8 @@ export interface AllocationResult {
   explanation?: string;
 }
 
-export interface AllocationPlan {
-  generatedAt: string;
-  results: AllocationResult[];
-  summary?: string;
-}
-
 export interface EquipmentView extends Equipment {
+  departmentId: string;
   labName: string;
   departmentName: string;
   location: string;
